@@ -2,7 +2,42 @@
 (function (global) {
   'use strict';
 
+
   const RIM_STYLES = ['spoke5', 'mesh', 'star', 'deepdish', 'turbine'];
+
+  /** Real-world side-view (inches). Single scale for all cars. */
+  const PX_PER_IN = 2.2;
+  const DIMENSIONS = {
+    charger:    { len: 198.4, wb: 120.2, h: 58.2, doors: 4 },
+    challenger: { len: 198.0, wb: 116.0, h: 57.0, doors: 2 },
+    mustang:    { len: 189.4, wb: 107.0, h: 55.0, doors: 2 },
+    camaro:     { len: 188.3, wb: 110.7, h: 53.1, doors: 2 },
+    skyline:    { len: 181.1, wb: 104.9, h: 53.5, doors: 2 },
+    supra:      { len: 172.5, wb:  97.2, h: 50.9, doors: 2 },
+  };
+
+  function carDims(id) {
+    return DIMENSIONS[id] || DIMENSIONS.charger;
+  }
+
+  /** Local units: nose +X, ground y≈0. Scale locked to PX_PER_IN. */
+  function layoutOf(id) {
+    const d = carDims(id);
+    const half = d.len * PX_PER_IN * 0.5;
+    const H = d.h * PX_PER_IN * 0.42;
+    const wb = d.wb * PX_PER_IN;
+    const front = wb * 0.48;
+    const rear = -wb * 0.52;
+    return {
+      half: half, H: H, wb: wb,
+      nose: half, tail: -half,
+      frontAxle: front, rearAxle: rear,
+      roofY: -H, beltY: -H * 0.55,
+      doors: d.doors,
+      lenIn: d.len, wbIn: d.wb, hIn: d.h,
+    };
+  }
+
 
   function shadeColor(hex, amt) {
     try {
@@ -477,6 +512,21 @@
     if (d.high) {
       ctx.fillStyle = 'rgba(255,240,200,0.35)';
       ctx.fillRect(104, -28, 16, 10);
+      // crosseyed twin stacks more readable
+      ctx.fillStyle = '#fff6d0';
+      ctx.beginPath(); ctx.ellipse(99, -26, 2.2, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(97.5, -18, 2.4, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    // decklid lip spoiler
+    if (d.med) {
+      ctx.fillStyle = shadeColor(color, -22);
+      roundRectPath(ctx, -102, -34, 18, 4, 1);
+      ctx.fill();
+      if ((car.bodyLevel || 0) > 0) {
+        ctx.fillStyle = shadeColor(color, -30);
+        roundRectPath(ctx, -104, -40, 22, 5, 1);
+        ctx.fill();
+      }
     }
     ctx.fillStyle = '#1a0508';
     roundRectPath(ctx, -102, -28, 10, 16, 2);
@@ -797,6 +847,56 @@
     exhaustTips(ctx, [-86, -76], 0, opts);
   }
 
+
+  function drawWheelWells(ctx, positions, opts) {
+    const d = detail(opts);
+    if (d.low) return;
+    for (const x of positions) {
+      ctx.fillStyle = '#0a0a0c';
+      ctx.beginPath();
+      ctx.ellipse(x, 2, 22, 16, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+      if (d.high) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.ellipse(x, 2, 20, 14, 0, Math.PI * 1.05, Math.PI * 1.95);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawExhaustPop(ctx, car, opts) {
+    if (opts.reflectionPass) return;
+    const flame = car.exhaustFlame || 0;
+    const spin = car.wheelspin || 0;
+    if (flame < 0.15 && spin < 0.45 && !(car.nitroActive && car.nitro > 0)) return;
+    const d = detail(opts);
+    const flick = 0.65 + Math.random() * 0.35;
+    const str = Math.max(flame, spin * 0.6, (car.nitroActive ? 0.8 : 0));
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = 'rgba(255,110,30,' + (0.55 * str * flick) + ')';
+    ctx.beginPath();
+    ctx.moveTo(-92, -2);
+    ctx.lineTo(-92 - 28 * str * flick, 2);
+    ctx.lineTo(-92, 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,230,120,' + (0.7 * str * flick) + ')';
+    ctx.beginPath();
+    ctx.moveTo(-92, 0);
+    ctx.lineTo(-92 - 14 * str * flick, 3);
+    ctx.lineTo(-92, 6);
+    ctx.closePath();
+    ctx.fill();
+    if (d.high) {
+      ctx.fillStyle = 'rgba(255,255,220,' + (0.5 * str) + ')';
+      ctx.fillRect(-96 - 8 * str, 2, 6, 2);
+    }
+    ctx.restore();
+  }
+
   const BODIES = {
     charger: bodyCharger,
     mustang: bodyMustang,
@@ -807,17 +907,9 @@
   };
 
   function wheelPositions(carId, bodyLevel) {
+    const lay = layoutOf(carId);
     const widen = (bodyLevel || 0) * 2;
-    const map = {
-      charger: [-54, 60],
-      mustang: [-52, 58],
-      supra: [-48, 54],
-      camaro: [-56, 62],
-      challenger: [-54, 60],
-      skyline: [-50, 56],
-    };
-    const p = map[carId] || [-52, 58];
-    return [p[0] - widen * 0.3, p[1] + widen * 0.3];
+    return [lay.rearAxle - widen * 0.15, lay.frontAxle + widen * 0.15];
   }
 
   function drawCarBody(ctx, car, opts) {
@@ -841,14 +933,17 @@
     bodyFn(ctx, car, opts);
     if (!opts.reflectionPass) {
       const wp = wheelPositions(id, car.bodyLevel);
+      drawWheelWells(ctx, wp, opts);
       const rimOpts = {
         quality: opts.quality,
         reflectionPass: false,
         rimStyle: car.rimStyle || RIM_STYLES[(car.rimIndex || 0) % RIM_STYLES.length],
         caliperColor: car.accent || '#c41230',
       };
-      drawWheel(ctx, wp[0], 4, car.wheelRot || 0, rimOpts);
-      drawWheel(ctx, wp[1], 4, car.wheelRot || 0, rimOpts);
+      const spinBoost = (car.wheelspin || 0) > 0.3 ? (car.wheelRot || 0) * 1.8 : (car.wheelRot || 0);
+      drawWheel(ctx, wp[0], 4, spinBoost, rimOpts);
+      drawWheel(ctx, wp[1], 4, spinBoost, rimOpts);
+      drawExhaustPop(ctx, car, opts);
     }
     if (car.shiftFlash > 0 && !opts.reflectionPass) {
       ctx.strokeStyle = 'rgba(124,255,58,' + car.shiftFlash + ')';
@@ -864,158 +959,263 @@
   }
 
 
-  /* —— Original pixel-art draw mode (nearest-neighbor scaled silhouettes) —— */
-  const PIXEL_W = 96;
-  const PIXEL_H = 40;
+  /* —— Pixel silhouettes locked to DIMENSIONS (same px/in; Charger = full width) —— */
+  const PIXEL_REF_LEN = DIMENSIONS.charger.len;
+  const PIXEL_W = 128;
+  const PIXEL_H = 56;
   const pixelCache = {};
 
-  function pxShade(hex, amt) {
-    return shadeColor(hex, amt);
+  function pxShade(hex, amt) { return shadeColor(hex, amt); }
+
+  function pxLayout(id) {
+    const d = carDims(id);
+    const scale = PIXEL_W / PIXEL_REF_LEN;
+    const lenPx = d.len * scale;
+    const hPx = d.h * scale * 0.72;
+    const wbPx = d.wb * scale;
+    const x0 = (PIXEL_W - lenPx) * 0.5;
+    const ground = PIXEL_H - 8;
+    const bodyBot = ground - 6;
+    const bodyTop = bodyBot - hPx * 0.52;
+    const roof = bodyBot - hPx;
+    const rearOH = (d.len - d.wb) * 0.42 * scale;
+    const rearA = x0 + rearOH;
+    const frontA = rearA + wbPx;
+    return {
+      x0: x0, x1: x0 + lenPx, lenPx: lenPx, hPx: hPx, wbPx: wbPx,
+      ground: ground, bodyBot: bodyBot, bodyTop: bodyTop, roof: roof,
+      rearA: rearA, frontA: frontA, doors: d.doors, id: id, d: d
+    };
   }
 
-  function paintPixelBody(pctx, car) {
+  function paintPixelBody(pctx, car, quality) {
     const id = car.id || 'charger';
     const c = car.color || '#888';
     const a = car.accent || '#ccc';
-    const dark = pxShade(c, -40);
-    const lit = pxShade(c, 28);
-    const glass = 'rgba(40,70,110,0.92)';
-    // clear
+    const dark = pxShade(c, -42);
+    const mid = pxShade(c, -18);
+    const lit = pxShade(c, 30);
+    const glass = 'rgba(35,65,105,0.95)';
+    const glassHi = 'rgba(160,200,240,0.5)';
+    const q = quality || 'High';
+    const hi = q === 'High' || q === 'Ultra';
+    const ultra = q === 'Ultra';
+    const L = pxLayout(id);
     pctx.clearRect(0, 0, PIXEL_W, PIXEL_H);
-    // shadow
-    pctx.fillStyle = 'rgba(0,0,0,0.45)';
-    pctx.fillRect(8, 34, 80, 4);
 
-    // Distinct silhouettes per car (original, not traced)
-    function bodyRect(x, y, w, h, col) {
+    function rect(x, y, w, h, col) {
       pctx.fillStyle = col;
-      pctx.fillRect(x, y, w, h);
+      pctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
     }
-    function wheel(x, y) {
-      pctx.fillStyle = '#0a0a0a';
-      pctx.fillRect(x, y, 10, 10);
-      pctx.fillStyle = '#3a3a3a';
-      pctx.fillRect(x + 2, y + 2, 6, 6);
-      pctx.fillStyle = '#c8c8c8';
-      pctx.fillRect(x + 4, y + 4, 2, 2);
+    function wheel(cx, spinning) {
+      const wr = hi ? 7 : 6;
+      const x = cx - wr, y = L.ground - wr * 2 + 1;
+      rect(x, y, wr * 2, wr * 2, '#050506');
+      rect(x + 1, y + 1, wr * 2 - 2, wr * 2 - 2, '#141416');
+      rect(x + 2, y + 2, wr * 2 - 4, wr * 2 - 4, '#2a2e34');
+      if (hi) {
+        rect(x + 3, y + 3, wr * 2 - 6, wr * 2 - 6, '#a8b0b8');
+        if (spinning) {
+          rect(x + 2, y + wr - 1, wr * 2 - 4, 2, '#9aa0a8');
+          rect(cx - 1, y + 3, 2, wr * 2 - 6, '#9aa0a8');
+        } else {
+          rect(cx - 1, y + 3, 2, wr * 2 - 6, '#d0d4da');
+          rect(x + 3, y + wr - 1, wr * 2 - 6, 2, '#d0d4da');
+        }
+        rect(cx - 1, y + wr - 1, 2, 2, '#eee');
+        if (ultra) rect(x, y + wr - 2, 1, 4, '#c41230');
+      } else {
+        rect(cx - 2, y + wr - 2, 4, 4, '#888');
+      }
+    }
+    function well(cx) {
+      const wr = 9;
+      rect(cx - wr, L.bodyBot - 4, wr * 2, 10, '#0a0a0c');
+      if (hi) rect(cx - wr + 1, L.bodyBot - 3, wr * 2 - 2, 2, '#1a1a20');
     }
 
+    rect(L.x0 + 4, L.ground + 1, L.lenPx - 8, 4, 'rgba(0,0,0,0.5)');
+
+    const glow = car.underglow;
+    if (glow && glow !== 'off' && glow !== 'none' && hi) {
+      const map = { blue: '#5090ff', purple: '#b450ff', red: '#ff4050', green: '#3cff8c', cyan: '#28e6ff', white: '#dce6ff' };
+      pctx.globalAlpha = 0.5;
+      rect(L.x0 + 8, L.ground - 2, L.lenPx - 16, 3, map[glow] || map.blue);
+      pctx.globalAlpha = 1;
+    }
+
+    well(L.rearA);
+    well(L.frontA);
+
+    // Cabin: 4-door Charger = long cabin; coupes shorter; Supra/Mustang more fastback
+    let cabinStart = 0.40, cabinEnd = 0.76;
+    if (L.doors === 4) { cabinStart = 0.34; cabinEnd = 0.86; } // long sedan greenhouse
+    else if (id === 'challenger') { cabinStart = 0.40; cabinEnd = 0.74; }
+    else if (id === 'mustang') { cabinStart = 0.42; cabinEnd = 0.78; }
+    else if (id === 'camaro') { cabinStart = 0.40; cabinEnd = 0.76; }
+    else if (id === 'skyline') { cabinStart = 0.38; cabinEnd = 0.78; }
+    else if (id === 'supra') { cabinStart = 0.40; cabinEnd = 0.76; }
+
+    const cx0 = L.x0 + L.lenPx * cabinStart;
+    const cx1 = L.x0 + L.lenPx * cabinEnd;
+
+    // body
+    rect(L.x0 + 2, L.bodyTop, L.lenPx - 4, L.bodyBot - L.bodyTop, c);
+    // long hood highlight (nose = right = front)
+    rect(cx1 - 2, L.bodyTop - 2, L.x1 - cx1, 5, lit);
+    // rear deck / haunch (left)
+    rect(L.x0 + 2, L.bodyTop, Math.max(6, cx0 - L.x0), 5, mid);
+    // roof / cabin
+    rect(cx0, L.roof + 2, cx1 - cx0, L.bodyTop - L.roof, c);
+    if (hi) rect(cx0 + 2, L.roof + 2, cx1 - cx0 - 4, 2, mid);
+
+    // glass
+    const gw = (cx1 - cx0) * (L.doors === 4 ? 0.28 : 0.40);
+    rect(cx0 + 3, L.roof + 4, gw, L.bodyTop - L.roof - 5, glass);
+    rect(cx0 + 5 + gw, L.roof + 4, gw * 0.9, L.bodyTop - L.roof - 5, glass);
+    if (L.doors === 4) {
+      rect(cx0 + 5 + gw * 1.9, L.roof + 5, gw * 0.85, L.bodyTop - L.roof - 7, glass);
+    }
+    if (hi) {
+      rect(cx0 + 4, L.roof + 5, 5, 2, glassHi);
+      rect(cx0 + gw + 2, L.roof + 3, 2, L.bodyTop - L.roof - 3, 'rgba(8,8,10,0.85)');
+      if (L.doors === 4) {
+        rect(cx0 + gw * 1.85, L.roof + 3, 2, L.bodyTop - L.roof - 3, 'rgba(8,8,10,0.75)');
+        rect(cx0 + gw * 2.7, L.roof + 3, 2, L.bodyTop - L.roof - 3, 'rgba(8,8,10,0.7)');
+      }
+      // panel lines
+      rect(cx0, L.bodyTop, 1, L.bodyBot - L.bodyTop, 'rgba(0,0,0,0.35)');
+      if (L.doors === 4) rect(cx0 + (cx1 - cx0) * 0.55, L.bodyTop, 1, L.bodyBot - L.bodyTop, 'rgba(0,0,0,0.28)');
+    }
+
+    // Car-specific nose / tail / wing
     if (id === 'charger') {
-      // long hood, crosseyed stacked lights, muscular rear
-      bodyRect(10, 18, 72, 12, c);
-      bodyRect(28, 10, 36, 10, c);
-      bodyRect(10, 16, 22, 4, lit);
-      bodyRect(62, 14, 18, 6, dark);
-      pctx.fillStyle = glass;
-      pctx.fillRect(30, 11, 14, 7);
-      pctx.fillRect(46, 11, 12, 7);
-      // stacked headlights
-      bodyRect(8, 20, 3, 3, '#ffe8a0');
-      bodyRect(8, 24, 3, 3, '#ffe8a0');
-      bodyRect(80, 20, 3, 4, '#ff3030');
-      bodyRect(14, 28, 10, 3, dark);
-      bodyRect(64, 28, 12, 3, dark);
-    } else if (id === 'mustang') {
-      bodyRect(12, 18, 68, 12, c);
-      bodyRect(34, 10, 30, 10, c);
-      bodyRect(12, 16, 18, 4, lit);
-      pctx.fillStyle = glass;
-      pctx.fillRect(36, 11, 12, 7);
-      pctx.fillRect(50, 11, 10, 7);
-      bodyRect(10, 20, 4, 5, '#ffe8a0');
-      bodyRect(78, 20, 4, 5, '#ff3030');
-      // fastback slope cue
-      bodyRect(62, 12, 10, 6, dark);
-    } else if (id === 'supra') {
-      bodyRect(14, 18, 66, 11, c);
-      bodyRect(30, 9, 34, 11, c);
-      bodyRect(68, 12, 14, 8, dark); // wing
-      pctx.fillStyle = glass;
-      pctx.fillRect(32, 10, 14, 8);
-      pctx.fillRect(48, 10, 12, 8);
-      bodyRect(12, 20, 4, 4, '#ffe8a0');
-      bodyRect(78, 20, 4, 4, a);
-    } else if (id === 'camaro') {
-      bodyRect(12, 19, 70, 11, c);
-      bodyRect(32, 11, 34, 10, c);
-      bodyRect(18, 16, 20, 4, lit);
-      pctx.fillStyle = glass;
-      pctx.fillRect(34, 12, 14, 7);
-      pctx.fillRect(50, 12, 12, 7);
-      bodyRect(10, 21, 4, 4, '#ffe8a0');
-      bodyRect(80, 21, 4, 4, '#ff3030');
-      bodyRect(40, 17, 16, 2, dark); // SS stripe cue
+      // crosseyed stacked headlights at nose (right)
+      rect(L.x1 - 6, L.bodyTop + 2, 4, 4, '#1a1810');
+      rect(L.x1 - 5, L.bodyTop + 3, 2, 2, '#fff6c8');
+      rect(L.x1 - 6, L.bodyTop + 7, 4, 4, '#1a1810');
+      rect(L.x1 - 5, L.bodyTop + 8, 2, 2, '#ffe8a0');
+      if (hi) rect(L.x1 - 2, L.bodyTop + 4, 3, 6, 'rgba(255,240,180,0.3)');
+      // short deck taillights
+      rect(L.x0 + 2, L.bodyTop + 2, 4, 10, '#2a0508');
+      rect(L.x0 + 3, L.bodyTop + 3, 2, 3, '#ff1a2a');
+      rect(L.x0 + 3, L.bodyTop + 7, 2, 4, '#ff3344');
+      // dual exhaust
+      rect(L.x0 + 6, L.bodyBot - 1, 5, 3, '#1a1a1c');
+      rect(L.x0 + 13, L.bodyBot - 1, 5, 3, '#1a1a1c');
+      // short decklid lip
+      rect(L.x0 + 2, L.bodyTop - 2, 14, 3, dark);
+      if (a) { pctx.globalAlpha = 0.9; rect(cx0 - 10, L.bodyTop + 6, 18, 2, a); pctx.globalAlpha = 1; }
+      if (ultra) {
+        rect(L.x1 - 8, L.bodyBot - 6, 5, 4, '#111');
+        rect(L.x1 - 7, L.bodyBot - 5, 3, 1, '#333');
+      }
     } else if (id === 'challenger') {
-      bodyRect(10, 18, 74, 12, c);
-      bodyRect(30, 11, 34, 9, c);
-      bodyRect(10, 16, 24, 4, lit);
-      pctx.fillStyle = glass;
-      pctx.fillRect(32, 12, 14, 6);
-      pctx.fillRect(48, 12, 12, 6);
-      bodyRect(8, 21, 4, 5, '#ffe8a0');
-      bodyRect(82, 21, 4, 5, '#ff3030');
+      rect(L.x1 - 6, L.bodyTop + 3, 5, 6, '#ffe8a0');
+      rect(L.x0 + 2, L.bodyTop + 2, 4, 10, '#2a0508');
+      rect(L.x0 + 3, L.bodyTop + 3, 2, 8, '#ff2030');
+      rect(L.x0 + 4, L.bodyTop - 1, 16, 3, dark);
+      if (a) rect(cx0 - 8, L.bodyTop + 6, 24, 2, a);
+    } else if (id === 'mustang') {
+      // fastback slope cue
+      rect(cx1 - 8, L.roof + 2, 12, 6, dark);
+      rect(L.x1 - 6, L.bodyTop + 3, 5, 6, '#ffe8a0');
+      rect(L.x0 + 2, L.bodyTop + 2, 4, 9, '#2a0508');
+      if (hi) {
+        rect(L.x0 + 3, L.bodyTop + 3, 2, 2, '#ff2030');
+        rect(L.x0 + 3, L.bodyTop + 6, 2, 2, '#ff2030');
+        rect(L.x0 + 3, L.bodyTop + 9, 2, 2, '#ff2030');
+      }
+    } else if (id === 'camaro') {
+      rect(L.x1 - 6, L.bodyTop + 3, 5, 5, '#ffe8a0');
+      rect(L.x0 + 2, L.bodyTop + 3, 4, 8, '#ff2030');
+      rect(cx0 + 8, L.bodyTop + 2, 16, 2, dark); // SS stripe cue
+      if ((car.bodyLevel || 0) > 0) rect(L.x0 + 4, L.roof + 4, 14, 3, dark);
     } else if (id === 'skyline') {
-      bodyRect(14, 18, 64, 11, c);
-      bodyRect(28, 9, 36, 11, c);
-      bodyRect(66, 8, 16, 5, dark); // GT-R wing
-      bodyRect(66, 13, 4, 6, dark);
-      pctx.fillStyle = glass;
-      pctx.fillRect(30, 10, 14, 8);
-      pctx.fillRect(46, 10, 12, 8);
-      bodyRect(12, 20, 4, 4, '#ffe8a0');
-      bodyRect(76, 20, 4, 4, '#ff3030');
-      bodyRect(40, 17, 4, 2, a);
-    } else {
-      bodyRect(14, 18, 66, 12, c);
-      bodyRect(30, 10, 34, 10, c);
-      pctx.fillStyle = glass;
-      pctx.fillRect(32, 11, 28, 7);
-      bodyRect(12, 20, 4, 4, '#ffe8a0');
-      bodyRect(78, 20, 4, 4, '#ff3030');
+      // big wing
+      rect(L.x0 + 4, L.roof - 4, 22, 3, dark);
+      rect(L.x0 + 6, L.roof - 1, 3, 5, dark);
+      rect(L.x0 + 20, L.roof - 1, 3, 5, dark);
+      if (hi) rect(L.x0 + 5, L.roof - 3, 20, 1, lit);
+      rect(L.x1 - 6, L.bodyTop + 3, 5, 5, '#ffe8a0');
+      rect(L.x0 + 2, L.bodyTop + 3, 4, 8, '#ff2030');
+      if (a) rect(cx0 + 10, L.bodyTop + 4, 5, 2, a);
+    } else if (id === 'supra') {
+      rect(L.x0 + 4, L.roof - 2, 20, 3, dark);
+      rect(L.x0 + 6, L.roof + 1, 3, 4, dark);
+      rect(L.x0 + 18, L.roof + 1, 3, 4, dark);
+      rect(L.x1 - 6, L.bodyTop + 3, 5, 5, '#ffe8a0');
+      rect(L.x0 + 2, L.bodyTop + 3, 4, 7, a || '#ff3030');
+      // wedge nose drop
+      if (hi) rect(cx1, L.bodyTop - 1, L.x1 - cx1 - 2, 3, lit);
     }
 
-    // body kit widen cue
+    // rocker
+    rect(L.x0 + 4, L.bodyBot - 2, L.lenPx - 8, 3, dark);
+
+    // body kit flares
     if ((car.bodyLevel || 0) > 0) {
-      bodyRect(8, 24, 6, 6, dark);
-      bodyRect(82, 24, 6, 6, dark);
+      rect(L.rearA - 10, L.bodyBot - 8, 8, 8, dark);
+      rect(L.frontA + 2, L.bodyBot - 8, 8, 8, dark);
     }
-    wheel(20, 26);
-    wheel(66, 26);
 
-    // nitro flame
+    // door handle / mirror
+    if (hi) {
+      rect(cx0 + 8, L.bodyTop + 5, 4, 2, '#1a1a1c');
+      rect(cx1 - 6, L.roof + 6, 5, 3, mid);
+      rect(cx1 - 5, L.roof + 7, 3, 1, glassHi);
+    }
+
+    const spinning = (car.wheelspin || 0) > 0.35;
+    wheel(L.rearA, spinning);
+    wheel(L.frontA, spinning);
+
+    // exhaust flame / nitro (tail = left)
+    function flame(big) {
+      const flick = big ? 1 : 0.7;
+      rect(L.x0 - Math.floor(8 * flick), L.bodyBot - 4, Math.floor(10 * flick), 3, '#ff6a18');
+      rect(L.x0 - Math.floor(5 * flick), L.bodyBot - 3, Math.floor(6 * flick), 1, '#ffe060');
+      if (hi) rect(L.x0 - Math.floor(12 * flick), L.bodyBot - 5, Math.floor(5 * flick), 5, 'rgba(255,100,20,0.4)');
+    }
+    if ((car.nitroActive && car.nitro > 0) || (car.exhaustFlame && car.exhaustFlame > 0.2)) {
+      flame(!!(car.nitroActive && car.nitro > 0));
+      if (id === 'charger' || id === 'challenger') flame(false);
+    }
     if (car.nitroActive && car.nitro > 0) {
-      pctx.fillStyle = '#5ad0ff';
-      pctx.fillRect(2, 20, 8, 4);
-      pctx.fillStyle = '#e0f8ff';
-      pctx.fillRect(0, 21, 5, 2);
+      rect(L.x0 - 6, L.bodyTop + 4, 10, 5, '#5ad0ff');
+      rect(L.x0 - 8, L.bodyTop + 5, 6, 3, '#e0f8ff');
     }
   }
 
-  function getPixelSprite(car) {
+  function getPixelSprite(car, quality) {
+    const q = quality || 'High';
     const key = [
       car.id, car.color, car.accent, car.bodyLevel || 0,
       car.rimStyle || '', car.underglow || '',
-      (car.nitroActive && car.nitro > 0) ? 'n' : ''
+      (car.nitroActive && car.nitro > 0) ? 'n' : '',
+      (car.wheelspin || 0) > 0.35 ? 's' : '',
+      (car.exhaustFlame || 0) > 0.2 ? 'f' : '',
+      q
     ].join('|');
     let entry = pixelCache[key];
     if (entry) return entry;
     const c = document.createElement('canvas');
     c.width = PIXEL_W;
     c.height = PIXEL_H;
-    paintPixelBody(c.getContext('2d'), car);
+    paintPixelBody(c.getContext('2d'), car, q);
     pixelCache[key] = c;
-    // limit cache
     const keys = Object.keys(pixelCache);
-    if (keys.length > 80) delete pixelCache[keys[0]];
+    if (keys.length > 120) delete pixelCache[keys[0]];
     return c;
   }
 
   function drawPixelAt(ctx, car, screenX, y, scale, opts) {
     opts = opts || {};
-    const spr = getPixelSprite(car);
+    const spr = getPixelSprite(car, opts.quality || qualityOf(opts));
     const sx = scale * (car.scaleX || 1);
-    const w = PIXEL_W * sx * 2.1;
-    const h = PIXEL_H * scale * 2.1;
+    // Scale so Charger ~198.4*2.2 local ≈ matches prior visual size
+    const w = PIXEL_W * sx * 1.72;
+    const h = PIXEL_H * scale * 1.72;
     ctx.save();
     const pitch = car.bodyPitch || 0;
     const squatY = car.squatY || 0;
@@ -1026,7 +1226,16 @@
       ctx.scale(1, -0.55);
       ctx.globalAlpha = 0.25;
     }
-    ctx.drawImage(spr, -w / 2, -h + 8, w, h);
+    ctx.drawImage(spr, -w / 2, -h + 10, w, h);
+    if (!opts.reflectionPass && (car.wheelspin || 0) > 0.25) {
+      const spin = car.wheelspin;
+      ctx.globalAlpha = 0.25 + spin * 0.4;
+      ctx.fillStyle = '#d8d8e0';
+      for (let i = 0; i < 3 + Math.floor(spin * 3); i++) {
+        ctx.fillRect(-w * 0.32 - i * 6 - spin * 8, 2 + (i % 2) * 3, 10 + spin * 8, 4);
+      }
+      ctx.globalAlpha = 1;
+    }
     ctx.restore();
   }
 
@@ -1043,7 +1252,11 @@
     const squatY = car.squatY || 0;
     ctx.translate(screenX, y + squatY);
     if (pitch) ctx.rotate(pitch);
-    ctx.scale(scale * (car.scaleX || 1), scale);
+    const lay = layoutOf(car.id || car.carId || 'charger');
+    // Bodies authored ~±100 x / ~60 tall — scale to real inches via PX_PER_IN
+    const sx = scale * (car.scaleX || 1) * (lay.half / 100);
+    const sy = scale * (lay.H / 58);
+    ctx.scale(sx, sy);
     drawCarBody(ctx, car, opts);
     ctx.restore();
   }
@@ -1055,6 +1268,9 @@
     drawWheel: drawWheel,
     shadeColor: shadeColor,
     RIM_STYLES: RIM_STYLES,
+    DIMENSIONS: DIMENSIONS,
+    PX_PER_IN: PX_PER_IN,
+    layoutOf: layoutOf,
     BODIES: Object.keys(BODIES),
     PIXEL_W: PIXEL_W,
     PIXEL_H: PIXEL_H,

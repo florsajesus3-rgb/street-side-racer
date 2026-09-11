@@ -169,6 +169,7 @@
       bodyPitch: 0,
       squatY: 0,
       wheelspin: 0,
+      exhaustFlame: 0,
       id: src ? src.id : (isPlayer ? 'charger' : 'camaro'),
       color: src ? src.color : (isPlayer ? '#d62828' : rivalColor),
       accent: src ? src.accent : (isPlayer ? '#ffcc00' : '#a8c8ff'),
@@ -759,11 +760,11 @@
       const drive = speedFromRpm(car.rpm * 0.92, 1, car) * (car.bogTimer > 0 ? 0.45 : 1) * Math.min(1, launchMul + 0.12);
       car.speed = drive;
       car.x += car.speed * dt * PX_PER_FOOT * 0.35;
-      if (spinning || car.bogTimer > 0) spawnSmoke(car, car.isPlayer ? 0 : 1, 2);
+      if (spinning || car.bogTimer > 0) spawnSmoke(car, car.isPlayer ? 0 : 1, 2 + (car.wheelspin || 0) * 3);
       // light wheelie for high power / light rear (low launchGrip often = heavy torque)
       if (powerGrip > 1.25 && throttle > 0.7 && car.speed > 2 && car.speed < 28 && !spinning) {
-        car.bodyPitch = Math.min(0.14, (car.bodyPitch || 0) + dt * 0.35 * (powerGrip - 1.1));
-        car.squatY = -Math.min(10, Math.abs(car.bodyPitch) * 55);
+        car.bodyPitch = Math.min(0.22, (car.bodyPitch || 0) + dt * 0.55 * (powerGrip - 1.1));
+        car.squatY = -Math.min(16, Math.abs(car.bodyPitch) * 70);
       }
     } else if (car.nitroActive && settings.tireSmoke) {
       spawnSmoke(car, car.isPlayer ? 0 : 1, 0.35);
@@ -788,6 +789,10 @@
 
     car.mph = car.speed * 3600 / 5280;
     car.wheelRot += (car.speed + (car.wheelspin || 0) * 40) * dt * 2.5;
+    // exhaust flame pops on hard launch / nitro / wheelspin recovery
+    const wantFlame = (car.nitroActive && car.nitro > 0) || ((car.wheelspin || 0) > 0.5 && throttle > 0.5) || (car.shiftFlash > 0.05);
+    car.exhaustFlame = Math.max(0, (car.exhaustFlame || 0) + (wantFlame ? dt * 4 : -dt * 3));
+    if (car.exhaustFlame > 1) car.exhaustFlame = 1;
 
     if (car.x >= TRACK_PX) {
       car.x = TRACK_PX;
@@ -907,35 +912,51 @@
     const roadBot = H;
     const density = settings.crowdDensity ? 1 : 0.45;
 
-    // distant fence / bleachers (pixel blocks)
-    ctx.fillStyle = '#3a4038';
-    ctx.fillRect(0, horizon - 18, W, 22);
-    ctx.fillStyle = '#2a3028';
-    for (let x = -((cam * 0.2) % 28); x < W; x += 28) {
-      ctx.fillRect(x, horizon - 36, 14, 20);
+    // grandstand lite (pixel bleachers)
+    ctx.fillStyle = '#2e342c';
+    ctx.fillRect(0, horizon - 52, W, 38);
+    for (let row = 0; row < 3; row++) {
+      ctx.fillStyle = row % 2 ? '#3a4038' : '#32382e';
+      ctx.fillRect(0, horizon - 50 + row * 10, W, 9);
+      for (let x = -((cam * 0.18) % 16); x < W; x += 16) {
+        ctx.fillStyle = hash(Math.floor(x + cam + row * 9)) > 0.55 ? '#5a4a3a' : '#2a3348';
+        ctx.fillRect(x + 2, horizon - 48 + row * 10, 5, 7);
+      }
     }
-    // tire barrier wall
-    const tireY = roadTop - 14;
-    for (let x = -((cam * 0.85) % 22); x < W + 22; x += 22) {
-      ctx.fillStyle = '#1a1a1a';
-      ctx.fillRect(x, tireY, 18, 12);
-      ctx.fillStyle = '#333';
-      ctx.fillRect(x + 4, tireY + 3, 10, 6);
-      ctx.fillStyle = '#111';
-      ctx.fillRect(x + 7, tireY + 5, 4, 2);
+    ctx.fillStyle = '#1a1e18';
+    ctx.fillRect(0, horizon - 16, W, 6);
+
+    // stacked tire wall
+    const tireY = roadTop - 18;
+    for (let stack = 0; stack < 2; stack++) {
+      for (let x = -((cam * 0.85) % 20); x < W + 20; x += 20) {
+        ctx.fillStyle = stack ? '#151515' : '#1c1c1c';
+        ctx.beginPath();
+        ctx.ellipse(x + 9, tireY + 6 - stack * 9, 9, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(x + 9, tireY + 6 - stack * 9, 5, 3, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
 
-    // green field strip
+    // green runoff
     ctx.fillStyle = '#3d5a34';
-    ctx.fillRect(0, horizon + 4, W, roadTop - horizon - 18);
+    ctx.fillRect(0, horizon + 4, W, roadTop - horizon - 20);
+    ctx.fillStyle = '#4a6a3c';
+    for (let x = -((cam * 0.3) % 40); x < W; x += 40) ctx.fillRect(x, horizon + 8, 18, 3);
 
     if (settings.crowdDensity) drawCrowd(cam, roadTop);
 
-    // dual-lane asphalt
+    // dual-lane asphalt with seam
     ctx.fillStyle = '#3a3e44';
     ctx.fillRect(0, roadTop, W, roadBot - roadTop);
     ctx.fillStyle = '#32363c';
     ctx.fillRect(0, roadTop + (roadBot - roadTop) * 0.48, W, (roadBot - roadTop) * 0.52);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(0, roadTop + (roadBot - roadTop) * 0.47, W, 3);
 
     if (settings.reflections) {
       const rg = ctx.createLinearGradient(0, roadTop, 0, roadBot);
@@ -959,11 +980,12 @@
       ctx.fillRect(i, roadBot - 8, 16, 5);
     }
 
-    // cones along lanes (original pixel)
-    for (let i = -2; i < Math.ceil(W / 90) + 2; i++) {
-      const cx = i * 90 - ((cam * 0.9) % 90) + 40;
-      drawCone(cx, laneY - 10);
-      drawCone(cx + 45, roadTop + 10);
+    // cones — lane edges + center
+    for (let i = -2; i < Math.ceil(W / 70) + 2; i++) {
+      const cx = i * 70 - ((cam * 0.9) % 70) + 20;
+      drawCone(cx, roadTop + 8);
+      drawCone(cx + 35, laneY - 8);
+      drawCone(cx + 18, roadBot - 22);
     }
 
     const finX = TRACK_PX - cam;
@@ -981,12 +1003,19 @@
   }
 
   function drawCone(x, y) {
-    ctx.fillStyle = '#ff7a1a';
-    ctx.fillRect(x - 4, y - 10, 8, 10);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(x - 3, y - 7, 6, 3);
-    ctx.fillStyle = '#ff7a1a';
+    ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(x - 5, y, 10, 3);
+    ctx.fillStyle = '#ff7a1a';
+    ctx.beginPath();
+    ctx.moveTo(x, y - 14);
+    ctx.lineTo(x + 5, y);
+    ctx.lineTo(x - 5, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x - 3, y - 8, 6, 3);
+    ctx.fillStyle = '#ff7a1a';
+    ctx.fillRect(x - 2, y - 12, 4, 2);
   }
 
   function drawCrowd(cam, roadTop) {
@@ -1166,7 +1195,8 @@
       reflectionPass: !!reflectionPass,
       time: performance.now(),
       showLabel: !reflectionPass,
-      mode: 'pixel',
+      // High/Ultra: vector silhouettes; Low/Med: pixel sprites (both original art)
+      mode: (quality === 'High' || quality === 'Ultra') ? 'vector' : 'pixel',
     };
     if (window.SSRCarsDraw) {
       SSRCarsDraw.drawAt(ctx, car, screenX, y, scale, opts);
@@ -1232,71 +1262,114 @@
     const s = tachCanvas.width;
     tctx.clearRect(0, 0, s, s);
     const cx = s / 2, cy = s / 2, R = s * 0.42;
-
-    tctx.beginPath();
-    tctx.arc(cx, cy, R + 8, 0, Math.PI * 2);
-    tctx.fillStyle = 'rgba(0,0,0,0.45)';
-    tctx.fill();
-    tctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    tctx.lineWidth = 3;
-    tctx.stroke();
-
     const start = Math.PI * 0.75;
     const end = Math.PI * 2.25;
-    tctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    tctx.lineWidth = 14;
+
+    // analog bezel
+    const bezel = tctx.createRadialGradient(cx - R * 0.2, cy - R * 0.25, R * 0.1, cx, cy, R + 10);
+    bezel.addColorStop(0, '#3a3e46');
+    bezel.addColorStop(0.55, '#1a1c20');
+    bezel.addColorStop(1, '#0a0a0c');
     tctx.beginPath();
-    tctx.arc(cx, cy, R - 10, start, end);
+    tctx.arc(cx, cy, R + 10, 0, Math.PI * 2);
+    tctx.fillStyle = bezel;
+    tctx.fill();
+    tctx.strokeStyle = '#8a9098';
+    tctx.lineWidth = 3;
+    tctx.stroke();
+    tctx.beginPath();
+    tctx.arc(cx, cy, R + 6, 0, Math.PI * 2);
+    tctx.strokeStyle = '#2a2e34';
+    tctx.lineWidth = 5;
+    tctx.stroke();
+
+    // face
+    tctx.beginPath();
+    tctx.arc(cx, cy, R - 2, 0, Math.PI * 2);
+    tctx.fillStyle = '#0e1014';
+    tctx.fill();
+
+    // track arc
+    tctx.strokeStyle = '#2a2e38';
+    tctx.lineWidth = 12;
+    tctx.beginPath();
+    tctx.arc(cx, cy, R - 14, start, end);
     tctx.stroke();
 
     const plo = player.perfectLo || livePerfectLo();
     const phi = player.perfectHi || livePerfectHi();
     const prl = player.redline || liveRedline();
-    // Orange "good" band flanking the perfect green window
     const o0 = start + (end - start) * (Math.max(0, plo - 700) / prl);
     const o1 = start + (end - start) * (Math.min(prl, phi + 450) / prl);
     tctx.strokeStyle = '#ff9a2a';
-    tctx.lineWidth = 14;
+    tctx.lineWidth = 12;
     tctx.beginPath();
-    tctx.arc(cx, cy, R - 10, o0, o1);
+    tctx.arc(cx, cy, R - 14, o0, o1);
     tctx.stroke();
     const g0 = start + (end - start) * (plo / prl);
     const g1 = start + (end - start) * (phi / prl);
     tctx.strokeStyle = '#7CFF3A';
-    tctx.lineWidth = 14;
     tctx.beginPath();
-    tctx.arc(cx, cy, R - 10, g0, g1);
+    tctx.arc(cx, cy, R - 14, g0, g1);
+    tctx.stroke();
+    const r0 = start + (end - start) * 0.90;
+    tctx.strokeStyle = '#ff2a2a';
+    tctx.beginPath();
+    tctx.arc(cx, cy, R - 14, r0, end);
     tctx.stroke();
 
-    const r0 = start + (end - start) * 0.92;
-    tctx.strokeStyle = '#ff3a3a';
-    tctx.beginPath();
-    tctx.arc(cx, cy, R - 10, r0, end);
-    tctx.stroke();
-
-    tctx.strokeStyle = '#fff';
+    // major/minor ticks + numerals
+    tctx.fillStyle = '#d0d4da';
+    tctx.font = 'bold ' + Math.round(s * 0.055) + 'px sans-serif';
+    tctx.textAlign = 'center';
+    tctx.textBaseline = 'middle';
     for (let i = 0; i <= 8; i++) {
       const a = start + (end - start) * (i / 8);
       const cos = Math.cos(a), sin = Math.sin(a);
-      tctx.lineWidth = i % 2 === 0 ? 3 : 1.5;
+      const major = i % 2 === 0;
+      tctx.strokeStyle = major ? '#f0f2f5' : '#8a9098';
+      tctx.lineWidth = major ? 3 : 1.5;
       tctx.beginPath();
-      tctx.moveTo(cx + cos * (R - 22), cy + sin * (R - 22));
-      tctx.lineTo(cx + cos * (R - 4), cy + sin * (R - 4));
+      tctx.moveTo(cx + cos * (R - (major ? 28 : 22)), cy + sin * (R - (major ? 28 : 22)));
+      tctx.lineTo(cx + cos * (R - 6), cy + sin * (R - 6));
       tctx.stroke();
+      if (major) {
+        const k = Math.round((i / 8) * (prl / 1000));
+        tctx.fillStyle = i >= 7 ? '#ff4a4a' : '#e8ecf0';
+        tctx.fillText(String(k), cx + cos * (R - 38), cy + sin * (R - 38));
+      }
     }
+    tctx.fillStyle = '#6a7388';
+    tctx.font = 'bold ' + Math.round(s * 0.04) + 'px sans-serif';
+    tctx.fillText('RPM x1000', cx, cy + R * 0.42);
 
-    const rpmN = clamp(player.rpm / (player.redline || liveRedline()), 0, 1.05);
+    // needle with hub
+    const rpmN = clamp(player.rpm / prl, 0, 1.05);
     const ang = start + (end - start) * Math.min(1, rpmN);
-    tctx.strokeStyle = '#ff4a4a';
-    tctx.fillStyle = '#ff4a4a';
-    tctx.lineWidth = 4;
-    tctx.lineCap = 'round';
+    tctx.save();
+    tctx.translate(cx, cy);
+    tctx.rotate(ang);
+    tctx.fillStyle = '#ff3030';
     tctx.beginPath();
-    tctx.moveTo(cx - Math.cos(ang) * 12, cy - Math.sin(ang) * 12);
-    tctx.lineTo(cx + Math.cos(ang) * (R - 28), cy + Math.sin(ang) * (R - 28));
-    tctx.stroke();
+    tctx.moveTo(-14, -3);
+    tctx.lineTo(R - 26, -1.5);
+    tctx.lineTo(R - 26, 1.5);
+    tctx.lineTo(-14, 3);
+    tctx.closePath();
+    tctx.fill();
+    tctx.fillStyle = '#fff0f0';
+    tctx.fillRect(R - 40, -1, 12, 2);
+    tctx.restore();
+    const hub = tctx.createRadialGradient(cx - 2, cy - 2, 1, cx, cy, 12);
+    hub.addColorStop(0, '#e8ecf0');
+    hub.addColorStop(1, '#4a5058');
     tctx.beginPath();
-    tctx.arc(cx, cy, 8, 0, Math.PI * 2);
+    tctx.arc(cx, cy, 10, 0, Math.PI * 2);
+    tctx.fillStyle = hub;
+    tctx.fill();
+    tctx.beginPath();
+    tctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    tctx.fillStyle = '#1a1c20';
     tctx.fill();
   }
 
@@ -1574,12 +1647,13 @@
       trickyLaunch: a.trickyLaunch,
     };
     if (window.SSRCarsDraw) {
-      SSRCarsDraw.drawAt(gctx, car, w * 0.5, h * 0.78, 2.2, {
-        quality: (settings && settings.preset) || 'High',
+      const q = (settings && settings.preset) || 'High';
+      SSRCarsDraw.drawAt(gctx, car, w * 0.5, h * 0.82, 2.65, {
+        quality: q,
         reflectionPass: false,
         time: performance.now(),
         showLabel: false,
-        mode: 'pixel',
+        mode: (q === 'High' || q === 'Ultra') ? 'vector' : 'pixel',
       });
     }
     if (a.trickyLaunch) {
@@ -1594,33 +1668,36 @@
     const w = dynoCanvas.width, h = dynoCanvas.height;
     const carId = progress.selected;
     const dyno = SSRCars.dynoCurves(carId, progress);
-    dctx.imageSmoothingEnabled = false;
-    dctx.fillStyle = '#000';
+    dctx.imageSmoothingEnabled = true;
+    dctx.fillStyle = '#0a0c10';
     dctx.fillRect(0, 0, w, h);
-    // grid
-    dctx.strokeStyle = '#1a1a1a';
+    // readable grid + axis frame
+    dctx.strokeStyle = '#1e2430';
     dctx.lineWidth = 1;
-    for (let i = 0; i <= 6; i++) {
-      const x = 40 + ((w - 50) * i) / 6;
-      dctx.beginPath(); dctx.moveTo(x, 10); dctx.lineTo(x, h - 24); dctx.stroke();
+    for (let i = 0; i <= 8; i++) {
+      const x = 44 + ((w - 56) * i) / 8;
+      dctx.beginPath(); dctx.moveTo(x, 12); dctx.lineTo(x, h - 28); dctx.stroke();
     }
-    for (let i = 0; i <= 4; i++) {
-      const y = 10 + ((h - 34) * i) / 4;
-      dctx.beginPath(); dctx.moveTo(40, y); dctx.lineTo(w - 10, y); dctx.stroke();
+    for (let i = 0; i <= 5; i++) {
+      const y = 12 + ((h - 40) * i) / 5;
+      dctx.beginPath(); dctx.moveTo(44, y); dctx.lineTo(w - 12, y); dctx.stroke();
     }
+    dctx.strokeStyle = '#3a4458';
+    dctx.lineWidth = 2;
+    dctx.strokeRect(44, 12, w - 56, h - 40);
     const maxHp = Math.max(100, ...dyno.points.map((p) => p.hp), dyno.peakHp);
     const maxTq = Math.max(100, ...dyno.points.map((p) => p.tq), dyno.peakTq);
     const maxY = Math.max(maxHp, maxTq) * 1.08;
-    const plotW = w - 50, plotH = h - 34;
+    const plotW = w - 56, plotH = h - 40;
     function xy(p, val) {
-      const x = 40 + (p.rpm / dyno.redline) * plotW;
-      const y = 10 + plotH - (val / maxY) * plotH;
+      const x = 44 + (p.rpm / dyno.redline) * plotW;
+      const y = 12 + plotH - (val / maxY) * plotH;
       return [x, y];
     }
     // torque dashed blue
     dctx.strokeStyle = '#4aa8ff';
-    dctx.lineWidth = 2;
-    dctx.setLineDash([6, 4]);
+    dctx.lineWidth = 3;
+    dctx.setLineDash([7, 4]);
     dctx.beginPath();
     dyno.points.forEach((p, i) => {
       const [x, y] = xy(p, p.tq);
@@ -1630,20 +1707,36 @@
     dctx.setLineDash([]);
     // power solid orange
     dctx.strokeStyle = '#ff8a2a';
-    dctx.lineWidth = 3;
+    dctx.lineWidth = 3.5;
     dctx.beginPath();
     dyno.points.forEach((p, i) => {
       const [x, y] = xy(p, p.hp);
       if (i === 0) dctx.moveTo(x, y); else dctx.lineTo(x, y);
     });
     dctx.stroke();
-    // labels
-    dctx.fillStyle = '#888';
-    dctx.font = '10px sans-serif';
-    dctx.fillText('RPM', w / 2 - 10, h - 6);
-    dctx.fillText(String(Math.round(maxY)) + 'HP', 2, 18);
-    dctx.fillText('0', 28, h - 26);
-    dctx.fillText(String(dyno.redline), w - 40, h - 26);
+    // peak markers
+    const peakHp = dyno.points.reduce((b, p) => p.hp > b.hp ? p : b, dyno.points[0]);
+    const peakTq = dyno.points.reduce((b, p) => p.tq > b.tq ? p : b, dyno.points[0]);
+    if (peakHp) {
+      const [hx, hy] = xy(peakHp, peakHp.hp);
+      dctx.fillStyle = '#ff8a2a';
+      dctx.beginPath(); dctx.arc(hx, hy, 4, 0, Math.PI * 2); dctx.fill();
+      dctx.font = 'bold 11px sans-serif';
+      dctx.fillText(Math.round(peakHp.hp) + ' hp', hx + 6, hy - 4);
+    }
+    if (peakTq) {
+      const [tx, ty] = xy(peakTq, peakTq.tq);
+      dctx.fillStyle = '#4aa8ff';
+      dctx.beginPath(); dctx.arc(tx, ty, 4, 0, Math.PI * 2); dctx.fill();
+      dctx.font = 'bold 11px sans-serif';
+      dctx.fillText(Math.round(peakTq.tq) + ' tq', tx + 6, ty + 12);
+    }
+    dctx.fillStyle = '#9aa3b8';
+    dctx.font = 'bold 11px sans-serif';
+    dctx.fillText('RPM', w / 2 - 12, h - 8);
+    dctx.fillText(String(Math.round(maxY)), 4, 22);
+    dctx.fillText('0', 30, h - 30);
+    dctx.fillText(String(dyno.redline), w - 48, h - 30);
   }
 
   function renderCarGrid() {
@@ -1658,19 +1751,24 @@
       tile.type = 'button';
       tile.className = 'car-tile' + (progress.selected === car.id ? ' selected' : '');
       tile.innerHTML = `<span class="class-tag"><span class="cls ${cr.letter}">${cr.letter}</span><span class="rtg">${cr.rating}</span></span>
-        <canvas width="120" height="48"></canvas>
-        <div class="tile-name">${car.short}</div>`;
+        <canvas width="168" height="72"></canvas>
+        <div class="tile-name">${car.short}</div>
+        <div class="tile-hp">${stats.hp || '?'} HP</div>`;
       const cv = tile.querySelector('canvas');
       const tctx = cv.getContext('2d');
       tctx.imageSmoothingEnabled = false;
-      tctx.fillStyle = '#0e1014';
-      tctx.fillRect(0, 0, 120, 48);
+      tctx.fillStyle = '#0c0e12';
+      tctx.fillRect(0, 0, 168, 72);
+      // bay floor stripe
+      tctx.fillStyle = '#1a1e26';
+      tctx.fillRect(0, 52, 168, 20);
       if (window.SSRCarsDraw) {
+        const q = (settings && settings.preset) || 'High';
         SSRCarsDraw.drawAt(tctx, {
           id: car.id, color: stats.color, accent: stats.accent,
           bodyLevel: stats.bodyLevel, rimStyle: stats.rimStyle, underglow: stats.underglow,
-          nitroActive: false, nitro: 0, wheelRot: 0, scaleX: 1,
-        }, 60, 40, 0.85, { mode: 'pixel', showLabel: false });
+          nitroActive: false, nitro: 0, wheelRot: 0.4, scaleX: 1,
+        }, 84, 58, 1.15, { mode: (q === 'High' || q === 'Ultra') ? 'vector' : 'pixel', showLabel: false, quality: q });
       }
       tile.addEventListener('click', () => {
         progress = SSRCars.selectCar(car.id);

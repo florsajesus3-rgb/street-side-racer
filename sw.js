@@ -1,4 +1,4 @@
-const CACHE = 'ssr-pixel-v4';
+const CACHE = 'ssr-pixel-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -25,7 +25,7 @@ self.addEventListener('fetch', (e) => {
   const isNav = e.request.mode === 'navigate';
   const isCode = /\.(js|css|html)$/.test(url.pathname);
   if (isNav || isCode) {
-    // network-first so Play link updates aren't stuck on old SW cache
+    // network-first so GitHub Pages updates stick
     e.respondWith(
       fetch(e.request).then((res) => {
         const copy = res.clone();
