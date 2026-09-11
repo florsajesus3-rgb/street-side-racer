@@ -23,57 +23,215 @@
     crowdBed: true,
   };
 
-  /** Per-engine voice (Pebble feel pass). */
-  let voice = {
-    id: 'v8',
-    cylMul: 2.0,       // pitch vs RPM
-    harm2: 2.01,
-    harmGain: 0.08,
-    noiseAmt: 1.0,
-    filterBase: 500,
-    filterSpan: 2800,
-    whine: 0,          // SC / turbo whistle amount 0..1
-    highRev: 0,        // skyline scream
-    bark: 0.5,         // shift overrun bark
-  };
+  /** Per-engine voice (deepened — obvious differences between mills). */
+  let voice = null;
   let scOsc = null;
   let scGain = null;
   let screamOsc = null;
   let screamGain = null;
+  let subOsc = null;
+  let subGain = null;
+  let lopeLfo = null;
+  let lopeGain = null;
 
+  /**
+   * cylMul: pitch vs RPM
+   * osc1/osc2: waveform character
+   * subAmt: low thump (big V8)
+   * lope: cam idle unevenness
+   * whine/whineBase/whineSpan: SC or turbo whistle
+   * highRev: I6 scream at redline
+   * rough: exhaust rasp / noise
+   * bright: open filter more
+   * bark: shift overrun
+   */
   const VOICES = {
-    // NA V8 muscle
-    hemi57:   { id: 'hemi57', cylMul: 1.85, harm2: 2.0, harmGain: 0.1, noiseAmt: 1.05, filterBase: 420, filterSpan: 2400, whine: 0, highRev: 0, bark: 0.7 },
-    '392':    { id: '392', cylMul: 1.9, harm2: 2.02, harmGain: 0.11, noiseAmt: 1.1, filterBase: 450, filterSpan: 2600, whine: 0, highRev: 0, bark: 0.75 },
-    hellcat:  { id: 'hellcat', cylMul: 1.75, harm2: 2.05, harmGain: 0.09, noiseAmt: 1.25, filterBase: 480, filterSpan: 3000, whine: 0.85, highRev: 0.15, bark: 0.9 },
-    coyote50: { id: 'coyote50', cylMul: 2.05, harm2: 2.01, harmGain: 0.09, noiseAmt: 0.95, filterBase: 520, filterSpan: 2700, whine: 0, highRev: 0.1, bark: 0.6 },
-    darkhorse:{ id: 'darkhorse', cylMul: 2.1, harm2: 2.03, harmGain: 0.1, noiseAmt: 1.0, filterBase: 540, filterSpan: 2900, whine: 0, highRev: 0.2, bark: 0.65 },
-    eco23:    { id: 'eco23', cylMul: 2.4, harm2: 3.01, harmGain: 0.06, noiseAmt: 0.85, filterBase: 600, filterSpan: 3200, whine: 0.45, highRev: 0.1, bark: 0.4 },
-    // I6 turbo
-    b48:      { id: 'b48', cylMul: 2.6, harm2: 3.0, harmGain: 0.07, noiseAmt: 0.8, filterBase: 650, filterSpan: 3400, whine: 0.55, highRev: 0.25, bark: 0.35 },
-    b58:      { id: 'b58', cylMul: 2.55, harm2: 3.02, harmGain: 0.08, noiseAmt: 0.85, filterBase: 620, filterSpan: 3600, whine: 0.5, highRev: 0.35, bark: 0.4 },
-    // Camaro
-    lTG:      { id: 'lTG', cylMul: 2.5, harm2: 3.0, harmGain: 0.06, noiseAmt: 0.85, filterBase: 600, filterSpan: 3200, whine: 0.5, highRev: 0.15, bark: 0.35 },
-    lgx:      { id: 'lgx', cylMul: 2.2, harm2: 2.5, harmGain: 0.07, noiseAmt: 0.9, filterBase: 550, filterSpan: 2800, whine: 0, highRev: 0.15, bark: 0.45 },
-    lt1:      { id: 'lt1', cylMul: 1.95, harm2: 2.02, harmGain: 0.1, noiseAmt: 1.05, filterBase: 480, filterSpan: 2700, whine: 0, highRev: 0.1, bark: 0.7 },
-    lt4:      { id: 'lt4', cylMul: 1.8, harm2: 2.04, harmGain: 0.09, noiseAmt: 1.2, filterBase: 500, filterSpan: 3100, whine: 0.75, highRev: 0.2, bark: 0.85 },
-    pentastar:{ id: 'pentastar', cylMul: 2.15, harm2: 2.4, harmGain: 0.07, noiseAmt: 0.9, filterBase: 520, filterSpan: 2600, whine: 0, highRev: 0.1, bark: 0.4 },
-    // Skyline I6
-    rb20:     { id: 'rb20', cylMul: 2.7, harm2: 3.05, harmGain: 0.07, noiseAmt: 0.75, filterBase: 700, filterSpan: 3800, whine: 0.4, highRev: 0.55, bark: 0.3 },
-    rb26:     { id: 'rb26', cylMul: 2.65, harm2: 3.08, harmGain: 0.08, noiseAmt: 0.8, filterBase: 720, filterSpan: 4200, whine: 0.55, highRev: 0.85, bark: 0.35 },
-    rb26n1:   { id: 'rb26n1', cylMul: 2.7, harm2: 3.1, harmGain: 0.09, noiseAmt: 0.85, filterBase: 750, filterSpan: 4500, whine: 0.6, highRev: 1.0, bark: 0.4 },
+    // —— Charger / Challenger HEMIs (must be obviously different) ——
+    hemi57: {
+      id: 'hemi57', label: '5.7 HEMI',
+      cylMul: 1.72, harm2: 2.0, harmGain: 0.12,
+      osc1: 'sawtooth', osc2: 'triangle',
+      noiseAmt: 1.15, rough: 0.55,
+      filterBase: 320, filterSpan: 2100, bright: 0.35,
+      subAmt: 0.22, lope: 0.35,
+      whine: 0, whineBase: 0, whineSpan: 0,
+      highRev: 0, bark: 0.65,
+    },
+    '392': {
+      id: '392', label: '6.4 392',
+      cylMul: 1.82, harm2: 2.03, harmGain: 0.14,
+      osc1: 'sawtooth', osc2: 'square',
+      noiseAmt: 1.25, rough: 0.7,
+      filterBase: 380, filterSpan: 2500, bright: 0.5,
+      subAmt: 0.28, lope: 0.45,
+      whine: 0, whineBase: 0, whineSpan: 0,
+      highRev: 0.05, bark: 0.8,
+    },
+    hellcat: {
+      id: 'hellcat', label: '6.2 Hellcat SC',
+      cylMul: 1.55, harm2: 2.08, harmGain: 0.1,
+      osc1: 'sawtooth', osc2: 'sawtooth',
+      noiseAmt: 1.45, rough: 0.85,
+      filterBase: 420, filterSpan: 3400, bright: 0.75,
+      subAmt: 0.32, lope: 0.55,
+      whine: 1.0, whineBase: 1400, whineSpan: 5200,
+      highRev: 0.2, bark: 0.95,
+    },
+    // —— Mustang ——
+    eco23: {
+      id: 'eco23', label: '2.3 EcoBoost',
+      cylMul: 2.55, harm2: 3.05, harmGain: 0.05,
+      osc1: 'triangle', osc2: 'sine',
+      noiseAmt: 0.7, rough: 0.25,
+      filterBase: 650, filterSpan: 3000, bright: 0.7,
+      subAmt: 0.06, lope: 0.05,
+      whine: 0.55, whineBase: 1800, whineSpan: 4500,
+      highRev: 0.15, bark: 0.3,
+    },
+    coyote50: {
+      id: 'coyote50', label: '5.0 Coyote',
+      cylMul: 2.15, harm2: 2.01, harmGain: 0.11,
+      osc1: 'sawtooth', osc2: 'triangle',
+      noiseAmt: 0.95, rough: 0.4,
+      filterBase: 480, filterSpan: 2900, bright: 0.65,
+      subAmt: 0.14, lope: 0.15,
+      whine: 0, whineBase: 0, whineSpan: 0,
+      highRev: 0.25, bark: 0.55,
+    },
+    darkhorse: {
+      id: 'darkhorse', label: 'Dark Horse',
+      cylMul: 2.25, harm2: 2.04, harmGain: 0.12,
+      osc1: 'sawtooth', osc2: 'square',
+      noiseAmt: 1.05, rough: 0.5,
+      filterBase: 520, filterSpan: 3200, bright: 0.8,
+      subAmt: 0.16, lope: 0.2,
+      whine: 0, whineBase: 0, whineSpan: 0,
+      highRev: 0.4, bark: 0.6,
+    },
+    // —— Supra ——
+    b48: {
+      id: 'b48', label: '2.0 B48',
+      cylMul: 2.7, harm2: 3.0, harmGain: 0.06,
+      osc1: 'triangle', osc2: 'sine',
+      noiseAmt: 0.65, rough: 0.2,
+      filterBase: 700, filterSpan: 3200, bright: 0.75,
+      subAmt: 0.05, lope: 0.05,
+      whine: 0.65, whineBase: 2000, whineSpan: 4800,
+      highRev: 0.3, bark: 0.25,
+    },
+    b58: {
+      id: 'b58', label: '3.0 B58',
+      cylMul: 2.45, harm2: 3.02, harmGain: 0.09,
+      osc1: 'sawtooth', osc2: 'triangle',
+      noiseAmt: 0.8, rough: 0.3,
+      filterBase: 600, filterSpan: 3800, bright: 0.85,
+      subAmt: 0.1, lope: 0.08,
+      whine: 0.5, whineBase: 1600, whineSpan: 4200,
+      highRev: 0.45, bark: 0.35,
+    },
+    // —— Camaro ——
+    lTG: {
+      id: 'lTG', label: '2.0T',
+      cylMul: 2.5, harm2: 3.0, harmGain: 0.05,
+      osc1: 'triangle', osc2: 'sine',
+      noiseAmt: 0.7, rough: 0.22,
+      filterBase: 620, filterSpan: 3000, bright: 0.7,
+      subAmt: 0.05, lope: 0.05,
+      whine: 0.6, whineBase: 1900, whineSpan: 4600,
+      highRev: 0.2, bark: 0.28,
+    },
+    lgx: {
+      id: 'lgx', label: '3.6 V6',
+      cylMul: 2.3, harm2: 2.55, harmGain: 0.08,
+      osc1: 'sawtooth', osc2: 'triangle',
+      noiseAmt: 0.85, rough: 0.35,
+      filterBase: 540, filterSpan: 2700, bright: 0.55,
+      subAmt: 0.08, lope: 0.1,
+      whine: 0, whineBase: 0, whineSpan: 0,
+      highRev: 0.2, bark: 0.4,
+    },
+    lt1: {
+      id: 'lt1', label: '6.2 LT1',
+      cylMul: 1.9, harm2: 2.02, harmGain: 0.12,
+      osc1: 'sawtooth', osc2: 'square',
+      noiseAmt: 1.1, rough: 0.55,
+      filterBase: 400, filterSpan: 2600, bright: 0.55,
+      subAmt: 0.2, lope: 0.25,
+      whine: 0, whineBase: 0, whineSpan: 0,
+      highRev: 0.15, bark: 0.7,
+    },
+    lt4: {
+      id: 'lt4', label: 'LT4 ZL1',
+      cylMul: 1.65, harm2: 2.06, harmGain: 0.1,
+      osc1: 'sawtooth', osc2: 'sawtooth',
+      noiseAmt: 1.35, rough: 0.8,
+      filterBase: 450, filterSpan: 3300, bright: 0.7,
+      subAmt: 0.26, lope: 0.4,
+      whine: 0.9, whineBase: 1500, whineSpan: 5000,
+      highRev: 0.25, bark: 0.9,
+    },
+    pentastar: {
+      id: 'pentastar', label: '3.6 Pentastar',
+      cylMul: 2.2, harm2: 2.45, harmGain: 0.07,
+      osc1: 'triangle', osc2: 'sine',
+      noiseAmt: 0.8, rough: 0.3,
+      filterBase: 500, filterSpan: 2400, bright: 0.45,
+      subAmt: 0.07, lope: 0.08,
+      whine: 0, whineBase: 0, whineSpan: 0,
+      highRev: 0.12, bark: 0.35,
+    },
+    // —— Skyline ——
+    rb20: {
+      id: 'rb20', label: 'RB20DET',
+      cylMul: 2.85, harm2: 3.1, harmGain: 0.07,
+      osc1: 'triangle', osc2: 'sawtooth',
+      noiseAmt: 0.7, rough: 0.28,
+      filterBase: 750, filterSpan: 4000, bright: 0.9,
+      subAmt: 0.05, lope: 0.05,
+      whine: 0.5, whineBase: 2100, whineSpan: 5000,
+      highRev: 0.7, bark: 0.25,
+    },
+    rb26: {
+      id: 'rb26', label: 'RB26DETT',
+      cylMul: 2.75, harm2: 3.15, harmGain: 0.09,
+      osc1: 'sawtooth', osc2: 'triangle',
+      noiseAmt: 0.85, rough: 0.35,
+      filterBase: 780, filterSpan: 4600, bright: 1.0,
+      subAmt: 0.08, lope: 0.06,
+      whine: 0.7, whineBase: 2200, whineSpan: 5600,
+      highRev: 1.0, bark: 0.3,
+    },
+    rb26n1: {
+      id: 'rb26n1', label: 'RB26 N1',
+      cylMul: 2.9, harm2: 3.2, harmGain: 0.1,
+      osc1: 'sawtooth', osc2: 'sawtooth',
+      noiseAmt: 0.95, rough: 0.4,
+      filterBase: 820, filterSpan: 5000, bright: 1.1,
+      subAmt: 0.09, lope: 0.08,
+      whine: 0.8, whineBase: 2400, whineSpan: 6000,
+      highRev: 1.15, bark: 0.35,
+    },
   };
 
+  voice = Object.assign({}, VOICES.hemi57);
+
   function setVoice(engineId) {
-    voice = Object.assign({}, VOICES[engineId] || {
-      id: engineId || 'v8', cylMul: 2.0, harm2: 2.01, harmGain: 0.08, noiseAmt: 1.0,
-      filterBase: 500, filterSpan: 2800, whine: 0, highRev: 0, bark: 0.5,
-    });
-    ensureScLayer();
+    const base = VOICES[engineId] || VOICES.hemi57;
+    voice = Object.assign({}, base, { id: engineId || base.id });
+    ensureExtraLayers();
+    applyVoiceWaveforms();
   }
 
-  function ensureScLayer() {
-    if (!ctx || !started) return;
+  function applyVoiceWaveforms() {
+    if (!engineOsc) return;
+    try {
+      engineOsc.type = voice.osc1 || 'sawtooth';
+      engineOsc2.type = voice.osc2 || 'square';
+    } catch (_) {}
+  }
+
+  function ensureExtraLayers() {
+    if (!ctx || !started || !engineGain) return;
     if (!scOsc) {
       scOsc = ctx.createOscillator();
       scOsc.type = 'sine';
@@ -90,17 +248,37 @@
       screamGain.gain.value = 0;
       const f = ctx.createBiquadFilter();
       f.type = 'bandpass';
-      f.frequency.value = 2200;
-      f.Q.value = 4;
+      f.frequency.value = 2400;
+      f.Q.value = 5;
       screamOsc.connect(f);
       f.connect(screamGain);
       screamGain.connect(engineGain);
       screamOsc.start();
       screamOsc._f = f;
     }
+    if (!subOsc) {
+      subOsc = ctx.createOscillator();
+      subOsc.type = 'sine';
+      subGain = ctx.createGain();
+      subGain.gain.value = 0;
+      subOsc.connect(subGain);
+      subGain.connect(engineGain);
+      subOsc.start();
+    }
+    if (!lopeLfo) {
+      lopeLfo = ctx.createOscillator();
+      lopeLfo.type = 'sine';
+      lopeLfo.frequency.value = 6;
+      lopeGain = ctx.createGain();
+      lopeGain.gain.value = 0;
+      lopeLfo.connect(lopeGain);
+      // modulate master engine gain slightly via engineLfo path when available
+      lopeLfo.start();
+    }
   }
 
   function ensure() {
+
     if (ctx) return true;
     const AC = global.AudioContext || global.webkitAudioContext;
     if (!AC) return false;
@@ -202,6 +380,8 @@
     engineOsc.start();
     engineOsc2.start();
     src.start();
+    ensureExtraLayers();
+    applyVoiceWaveforms();
   }
 
   function startCrowd() {
@@ -238,48 +418,83 @@
   function updateEngine(p) {
     if (!started || !ctx || !engineOsc) return;
     if (p.engineId && p.engineId !== voice.id) setVoice(p.engineId);
-    ensureScLayer();
+    ensureExtraLayers();
+    applyVoiceWaveforms();
+
     const rpm = Math.max(700, p.rpm || 900);
     const rl = Math.max(4000, p.redline || 7000);
-    const n = Math.max(0, Math.min(1.15, rpm / rl));
-    const baseHz = (rpm / 60) * voice.cylMul;
-    const t = ctx.currentTime;
-    engineOsc.frequency.setTargetAtTime(baseHz, t, 0.035);
-    engineOsc2.frequency.setTargetAtTime(baseHz * voice.harm2, t, 0.035);
-    if (engineFilter) {
-      engineFilter.frequency.setTargetAtTime(
-        voice.filterBase + n * voice.filterSpan + (p.nitro ? 700 : 0), t, 0.05
-      );
-    }
-    if (engineNoise && engineNoise.nFilter) {
-      engineNoise.nFilter.frequency.setTargetAtTime(400 + n * 1800, t, 0.05);
-      engineNoise.nGain.gain.setTargetAtTime(
-        (0.07 + n * 0.12 + (p.load || 0) * 0.06) * voice.noiseAmt, t, 0.05
-      );
-    }
+    const n = Math.max(0, Math.min(1.2, rpm / rl));
     const load = Math.max(0, Math.min(1, p.load == null ? 0.6 : p.load));
-    const engVol = (settingsRef.muted ? 0 : 1) * (settingsRef.engineVol || 0) *
-      (p.idle ? 0.18 : (0.22 + load * 0.55 + n * 0.25)) *
-      (p.nitro ? 1.18 : 1);
-    engineGain.gain.setTargetAtTime(engVol, t, 0.04);
-    if (engineLfo) {
-      engineLfo.oscGain.gain.setTargetAtTime(0.16 + load * 0.12, t, 0.05);
-      engineLfo.osc2Gain.gain.setTargetAtTime(voice.harmGain + n * 0.1, t, 0.05);
+    const nitro = !!p.nitro;
+    const idle = !!p.idle;
+    const baseHz = (rpm / 60) * (voice.cylMul || 2);
+    const t = ctx.currentTime;
+
+    engineOsc.frequency.setTargetAtTime(baseHz, t, 0.03);
+    engineOsc2.frequency.setTargetAtTime(baseHz * (voice.harm2 || 2), t, 0.03);
+
+    if (engineFilter) {
+      const bright = voice.bright || 0.5;
+      engineFilter.frequency.setTargetAtTime(
+        (voice.filterBase || 500) + n * (voice.filterSpan || 2800) * (0.7 + bright * 0.5) + (nitro ? 800 : 0),
+        t, 0.05
+      );
+      engineFilter.Q.setTargetAtTime(0.6 + (voice.rough || 0) * 0.5, t, 0.08);
     }
 
-    // Supercharger / turbo whine (Hellcat, ZL1, EcoBoost, RB)
-    if (scOsc && scGain) {
-      const wh = voice.whine * (p.idle ? 0.15 : (0.25 + n * 0.9 + (p.nitro ? 0.35 : 0)));
-      scOsc.frequency.setTargetAtTime(900 + n * 4200 + (p.nitro ? 500 : 0), t, 0.05);
-      scGain.gain.setTargetAtTime(settingsRef.muted ? 0 : wh * 0.09 * (settingsRef.engineVol || 0), t, 0.05);
+    if (engineNoise && engineNoise.nFilter) {
+      engineNoise.nFilter.frequency.setTargetAtTime(350 + n * 2000 + (voice.rough || 0) * 400, t, 0.05);
+      engineNoise.nFilter.Q.setTargetAtTime(0.5 + (voice.rough || 0) * 1.2, t, 0.08);
+      const nVol = (0.05 + n * 0.14 + load * 0.07) * (voice.noiseAmt || 1) * (0.5 + (voice.rough || 0));
+      engineNoise.nGain.gain.setTargetAtTime(nVol, t, 0.05);
     }
-    // High-rev scream (Skyline)
+
+    const engVol = (settingsRef.muted ? 0 : 1) * (settingsRef.engineVol || 0) *
+      (idle ? 0.16 + (voice.lope || 0) * 0.04 : (0.2 + load * 0.55 + n * 0.28)) *
+      (nitro ? 1.2 : 1);
+    engineGain.gain.setTargetAtTime(engVol, t, 0.035);
+
+    if (engineLfo) {
+      engineLfo.oscGain.gain.setTargetAtTime(0.14 + load * 0.14 + (voice.subAmt || 0) * 0.05, t, 0.05);
+      engineLfo.osc2Gain.gain.setTargetAtTime((voice.harmGain || 0.08) + n * 0.12, t, 0.05);
+    }
+
+    // Sub thump — big displacement V8s
+    if (subOsc && subGain) {
+      subOsc.frequency.setTargetAtTime(Math.max(35, baseHz * 0.5), t, 0.04);
+      const sub = (settingsRef.muted ? 0 : 1) * (settingsRef.engineVol || 0) *
+        (voice.subAmt || 0) * (idle ? 0.35 : (0.45 + load * 0.4));
+      subGain.gain.setTargetAtTime(sub * 0.35, t, 0.05);
+    }
+
+    // Cam lope (idle unevenness) — speed up LFO a bit with RPM
+    if (lopeLfo && lopeGain) {
+      lopeLfo.frequency.setTargetAtTime(5 + (voice.lope || 0) * 4 + n * 2, t, 0.1);
+      lopeGain.gain.setTargetAtTime(idle ? (voice.lope || 0) * 0.08 : (voice.lope || 0) * 0.03, t, 0.1);
+    }
+
+    // Supercharger / turbo whistle
+    if (scOsc && scGain) {
+      const w = voice.whine || 0;
+      const wb = voice.whineBase || 1200;
+      const ws = voice.whineSpan || 4000;
+      scOsc.frequency.setTargetAtTime(wb + n * ws + (nitro ? 600 : 0), t, 0.045);
+      const whAmt = w * (idle ? 0.12 : (0.2 + n * 0.95 + (nitro ? 0.4 : 0) + load * 0.15));
+      scGain.gain.setTargetAtTime(
+        settingsRef.muted ? 0 : whAmt * 0.11 * (settingsRef.engineVol || 0), t, 0.05
+      );
+    }
+
+    // High-rev I6 scream
     if (screamOsc && screamGain) {
-      const hr = voice.highRev * Math.max(0, (n - 0.55) / 0.45);
-      screamOsc.frequency.setTargetAtTime(baseHz * 4.2, t, 0.04);
-      if (screamOsc._f) screamOsc._f.frequency.setTargetAtTime(1800 + n * 2200, t, 0.05);
+      const hr = (voice.highRev || 0) * Math.max(0, (n - 0.5) / 0.5);
+      screamOsc.frequency.setTargetAtTime(baseHz * (3.8 + (voice.highRev || 0) * 0.6), t, 0.04);
+      if (screamOsc._f) {
+        screamOsc._f.frequency.setTargetAtTime(1600 + n * 2800, t, 0.05);
+        screamOsc._f.Q.setTargetAtTime(3 + hr * 4, t, 0.08);
+      }
       screamGain.gain.setTargetAtTime(
-        settingsRef.muted ? 0 : hr * 0.07 * (settingsRef.engineVol || 0) * (p.idle ? 0 : 1), t, 0.05
+        settingsRef.muted ? 0 : hr * 0.085 * (settingsRef.engineVol || 0) * (idle ? 0 : 1), t, 0.05
       );
     }
   }
