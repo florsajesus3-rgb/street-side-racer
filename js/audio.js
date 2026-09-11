@@ -428,10 +428,13 @@
     const nitro = !!p.nitro;
     const idle = !!p.idle;
     const baseHz = (rpm / 60) * (voice.cylMul || 2);
+    const spin = Math.max(0, Math.min(1, p.wheelspin || 0));
+    const flutter = spin > 0.2 ? (1 + Math.sin(performance.now() / 18) * 0.04 * spin) : 1;
     const t = ctx.currentTime;
+    const hz = baseHz * flutter;
 
-    engineOsc.frequency.setTargetAtTime(baseHz, t, 0.03);
-    engineOsc2.frequency.setTargetAtTime(baseHz * (voice.harm2 || 2), t, 0.03);
+    engineOsc.frequency.setTargetAtTime(hz, t, 0.03);
+    engineOsc2.frequency.setTargetAtTime(hz * (voice.harm2 || 2), t, 0.03);
 
     if (engineFilter) {
       const bright = voice.bright || 0.5;
@@ -445,7 +448,7 @@
     if (engineNoise && engineNoise.nFilter) {
       engineNoise.nFilter.frequency.setTargetAtTime(350 + n * 2000 + (voice.rough || 0) * 400, t, 0.05);
       engineNoise.nFilter.Q.setTargetAtTime(0.5 + (voice.rough || 0) * 1.2, t, 0.08);
-      const nVol = (0.05 + n * 0.14 + load * 0.07) * (voice.noiseAmt || 1) * (0.5 + (voice.rough || 0));
+      const nVol = (0.05 + n * 0.14 + load * 0.07 + spin * 0.2) * (voice.noiseAmt || 1) * (0.5 + (voice.rough || 0));
       engineNoise.nGain.gain.setTargetAtTime(nVol, t, 0.05);
     }
 
