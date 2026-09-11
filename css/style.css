@@ -100,7 +100,7 @@ html, body {
 .nitro {
   position: absolute;
   left: max(14px, env(safe-area-inset-left));
-  top: 38%; transform: translateY(-50%);
+  top: 42%; transform: translateY(-50%);
   width: 78px; height: 78px; border-radius: 50%;
   border: 3px solid #3a4a5a; background: rgba(8,10,16,0.75);
   color: #cfe8ff; cursor: pointer;
@@ -123,7 +123,7 @@ html, body {
 .hud-bottom {
   position: absolute;
   left: 0; right: 0; bottom: 0;
-  height: clamp(140px, 28vh, 200px);
+  height: clamp(120px, 26vh, 180px);
   pointer-events: none;
   display: flex; align-items: flex-end; justify-content: center;
   padding-bottom: max(8px, env(safe-area-inset-bottom));
@@ -165,7 +165,7 @@ html, body {
 }
 .tach {
   position: relative;
-  width: min(200px, 38vw); height: min(200px, 38vw);
+  width: min(190px, 22vw); height: min(190px, 22vw);
   pointer-events: none;
 }
 #tach-canvas { width: 100%; height: 100%; display: block; image-rendering: auto; }
@@ -533,9 +533,51 @@ button.ghost.slim, button.slim {
 .toggle-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: #ffe14a; }
 .slider-row input[type="range"] { flex: 1; max-width: 62%; accent-color: #ffe14a; }
 
-@media (orientation: portrait) and (max-width: 700px) {
-  .tach { width: min(160px, 42vw); height: min(160px, 42vw); }
+/* —— Landscape gameplay HUD —— */
+@media (orientation: landscape) {
+  .hud-bottom { height: clamp(110px, 24vh, 168px); }
+  .tach { width: min(180px, 20vw); height: min(180px, 20vw); }
+  .nitro { top: 44%; width: 72px; height: 72px; }
+  .race-gap { width: min(300px, 42vw); }
+  .pedal {
+    width: clamp(64px, 12vw, 92px);
+    height: clamp(78px, 18vh, 108px);
+  }
+  .shift { width: clamp(48px, 9vw, 64px); height: clamp(48px, 9vw, 64px); }
+}
+
+/* Portrait: allow garage menus, but hard-gate race HUD via rotate overlay */
+@media (orientation: portrait) {
   .upgrade-panel { max-height: 22vh; }
   .car-grid { max-height: 22vh; }
-  .hud-bottom { height: clamp(120px, 26vh, 170px); }
+  #hud { opacity: 0.15; pointer-events: none; }
+}
+
+/* Rotate-device gate (shown by JS when portrait; desktop always skipped in JS) */
+.rotate-gate {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  background: #050508;
+  padding: 20px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.rotate-gate.hidden { display: none !important; }
+.rotate-card {
+  width: min(340px, 92vw);
+  text-align: center;
+  padding: 22px 18px;
+}
+.rotate-card p {
+  color: #c8d0e0; font-size: 14px; line-height: 1.45; margin-top: 12px;
+}
+.rotate-icon {
+  font-size: 48px; margin-bottom: 10px;
+  animation: rotate-nudge 1.4s ease-in-out infinite;
+  display: inline-block;
+}
+@keyframes rotate-nudge {
+  0%, 100% { transform: rotate(-12deg); }
+  50% { transform: rotate(78deg); }
 }

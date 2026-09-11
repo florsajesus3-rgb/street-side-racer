@@ -60,6 +60,9 @@
       tireCirc: 7.0,
       launchGrip: 0.92,
       weight: 1.05,
+      curbLbs: 3750,
+      cdA: 6.9,
+      rearBias: 0.48,
       rivalPower: 0.97,
     },
     {
@@ -79,6 +82,9 @@
       tireCirc: 6.7,
       launchGrip: 1.0,
       weight: 0.95,
+      curbLbs: 3400,
+      cdA: 6.1,
+      rearBias: 0.47,
       rivalPower: 0.98,
     },
     {
@@ -98,6 +104,9 @@
       tireCirc: 7.05,
       launchGrip: 0.9,
       weight: 1.08,
+      curbLbs: 3760,
+      cdA: 6.7,
+      rearBias: 0.48,
       rivalPower: 0.96,
     },
     {
@@ -117,6 +126,9 @@
       tireCirc: 7.15,
       launchGrip: 0.88,
       weight: 1.12,
+      curbLbs: 4300,
+      cdA: 7.6,
+      rearBias: 0.49,
       rivalPower: 0.95,
     },
     {
@@ -136,6 +148,9 @@
       tireCirc: 7.2,
       launchGrip: 0.9,
       weight: 1.14,
+      curbLbs: 4400,
+      cdA: 7.9,
+      rearBias: 0.50,
       rivalPower: 0.94,
     },
     {
@@ -155,6 +170,9 @@
       tireCirc: 6.65,
       launchGrip: 1.08,
       weight: 0.93,
+      curbLbs: 3410,
+      cdA: 6.4,
+      rearBias: 0.52,
       rivalPower: 0.99,
     },
   ];
@@ -279,6 +297,9 @@
       launchGrip *= 0.95; // still tricksy even with sticky tires
     }
 
+    const curbLbs = (base.curbLbs || 3800) * (eng ? eng.weightMul : 1);
+    const builtHp = (eng ? eng.hp : 350) * (1 + built * 0.055);
+    const builtTq = (eng ? eng.tq : 350) * (1 + built * 0.045);
     return {
       ...base,
       color: palette[colorIdx % palette.length],
@@ -293,8 +314,11 @@
       label: base.short,
       engineId: eng ? eng.id : null,
       engineName: eng ? eng.name : 'Stock',
-      hp: eng ? eng.hp : null,
-      tq: eng ? eng.tq : null,
+      hp: builtHp,
+      tq: builtTq,
+      curbLbs,
+      cdA: base.cdA || 7.0,
+      rearBias: base.rearBias || 0.48,
       trickyLaunch: !!(eng && eng.launchGripMul < 0.85),
       rimIndex: (progress.rims && progress.rims[carId]) || 0,
       rimStyle: RIM_STYLES[((progress.rims && progress.rims[carId]) || 0) % RIM_STYLES.length],
@@ -411,6 +435,9 @@
           engineName: eng.name,
           hp: eng.hp,
           tq: eng.tq,
+          curbLbs: (c.curbLbs || 3800) * (eng.weightMul || 1),
+          cdA: c.cdA || 7.0,
+          rearBias: c.rearBias || 0.48,
           trickyLaunch: !!(eng.launchGripMul < 0.85),
           scaleX: 1,
           bodyLevel: 0,

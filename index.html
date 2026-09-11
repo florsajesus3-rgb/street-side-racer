@@ -6,14 +6,22 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="screen-orientation" content="landscape" />
   <meta name="theme-color" content="#0a0a0c" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <title>Street Side Racer</title>
-  <link rel="stylesheet" href="css/style.css?v=5" />
+  <link rel="stylesheet" href="css/style.css?v=6" />
 </head>
 <body>
+  <div id="rotate-gate" class="rotate-gate hidden" aria-live="polite">
+    <div class="rotate-card pixel-panel">
+      <div class="rotate-icon" aria-hidden="true">📱↻</div>
+      <div class="pixel-banner">ROTATE DEVICE</div>
+      <p><b>Turn phone sideways</b> — Street Side Racer plays in landscape.</p>
+    </div>
+  </div>
   <div id="app">
     <canvas id="game" width="1280" height="720"></canvas>
     <div id="fps-counter" class="fps-counter hidden">-- FPS</div>
@@ -193,7 +201,8 @@
           <li>Watch the Christmas tree — go on <b style="color:#7CFF3A">GREEN</b> (hold <b>BRAKE</b> to stay staged)</li>
           <li>Hold <b>GAS</b> · tap <b>+ / −</b> near the tach · hold <b>NOS</b> for boost</li>
           <li>Upshift in the <b style="color:#7CFF3A">green</b> tach zone for best ET</li>
-          <li>Too much power vs grip = <b>wheelspin</b> — launch skill matters</li>
+          <li>Too much torque vs tire grip = <b>wheelspin</b> — mass, aero &amp; weight transfer matter</li>
+          <li>Play in <b>landscape</b> — rotate if you see the gate</li>
           <li>Win races to earn cash — no ads, no IAP, ever</li>
         </ul>
         <button id="btn-howto-back" class="primary">GOT IT</button>
@@ -224,9 +233,9 @@
     </div>
   </div>
 
-  <script src="js/cars.js?v=5"></script>
-  <script src="js/cars-draw.js?v=5"></script>
-  <script src="js/audio.js?v=5"></script>
-  <script src="js/game.js?v=5"></script>
+  <script src="js/cars.js?v=6"></script>
+  <script src="js/cars-draw.js?v=6"></script>
+  <script src="js/audio.js?v=6"></script>
+  <script src="js/game.js?v=6"></script>
 </body>
 </html>

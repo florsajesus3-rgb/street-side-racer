@@ -15,6 +15,21 @@
   const MAX_NITRO = 1;
   const SETTINGS_KEY = 'ssr-settings-v1';
 
+  // Approx curb mass (kg) by car id — used by race physics
+  const MASS_KG_BY_ID = {
+    mustang: 1700,
+    supra: 1500,
+    camaro: 1705,
+    challenger: 1950,
+    charger: 1800,
+    skyline: 1550,
+  };
+  function massKgFor(carId, curbLbs) {
+    if (carId && MASS_KG_BY_ID[carId] != null) return MASS_KG_BY_ID[carId];
+    if (curbLbs != null) return Math.round(curbLbs * 0.453592);
+    return 1700;
+  }
+
   // Progress / selected car (SSRCars from cars.js — do not alter engine tables)
   let progress = window.SSRCars ? SSRCars.load() : null;
   let active = window.SSRCars && progress
@@ -188,6 +203,19 @@
       ratios: src ? src.ratios : GEAR_RATIOS,
       finalDrive: src ? src.finalDrive : FINAL_DRIVE,
       tireCirc: src ? src.tireCirc : TIRE_CIRC_FT,
+      hp: src && src.hp != null ? src.hp : 400,
+      tq: src && src.tq != null ? src.tq : 400,
+      curbLbs: src && src.curbLbs != null ? src.curbLbs : 3800,
+      massKg: (() => {
+        const id = src ? src.id : (isPlayer ? 'charger' : 'camaro');
+        const lbs = src && src.curbLbs != null ? src.curbLbs : 3800;
+        return massKgFor(id, lbs);
+      })(),
+      cdA: src && src.cdA != null ? src.cdA : 7.0,
+      rearBias: src && src.rearBias != null ? src.rearBias : 0.48,
+      rearLoadN: 0,
+      driveForce: 0,
+      gripForce: 0,
       aiShiftAt: 7600,
       aiNitroAt: 0.35,
       aiReaction: 0.14 + Math.random() * 0.16,
@@ -602,8 +630,11 @@
     car.rpm = clamp(car.rpm * (newR / oldR), IDLE, rl + 200);
     // Body squat / dive on upshift (visual + tiny ET feel via existing flash)
     if (dir > 0) {
-      car.bodyPitch = -0.07;
-      car.squatY = 6;
+      car.bodyPitch = -0.12;
+      car.squatY = 10;
+    } else {
+      car.bodyPitch = 0.06;
+      car.squatY = -4;
     }
     updateReadouts();
     if (car.isPlayer && window.SSRAudio) SSRAudio.playShift(dir > 0);
@@ -646,6 +677,27 @@
     return 0.25 + 0.75 * curve;
   }
 
+  /** Torque shape vs RPM (matches dyno hump): early-mid peak, falls near redline. */
+  function torqueFactor(rpm, car) {
+    const rl = (car && car.redline) || liveRedline();
+    const n = clamp(rpm / rl, 0, 1.05);
+    const hump = Math.sin(Math.PI * Math.min(1, Math.max(0, (n - 0.06) / 0.72)));
+    const early = 0.55 + 0.45 * Math.min(1, n / 0.32);
+    return clamp(0.18 + 0.82 * hump * early, 0.15, 1.05);
+  }
+
+  function carWheelbaseFt(car) {
+    const dims = (window.SSRCarsDraw && SSRCarsDraw.DIMENSIONS && SSRCarsDraw.DIMENSIONS[car.id]) || null;
+    const wbIn = dims ? dims.wb : 110;
+    return wbIn / 12;
+  }
+
+  function carCgHeightFt(car) {
+    const dims = (window.SSRCarsDraw && SSRCarsDraw.DIMENSIONS && SSRCarsDraw.DIMENSIONS[car.id]) || null;
+    const hIn = dims ? dims.h : 55;
+    return (hIn * 0.38) / 12; // ~CG at 38% of body height
+  }
+
   function spawnSmoke(car, lane, amount) {
     if (!settings.tireSmoke || amount <= 0) return;
     const roadTop = H * 0.55;
@@ -676,16 +728,34 @@
     if (car.bogTimer > 0) car.bogTimer -= dt;
 
     const rl = car.redline || liveRedline();
-    const grip = Math.max(0.35, car.launchGrip || 1);
-    const powerGrip = (car.power || 1) / grip;
+    const gripMul = Math.max(0.35, car.launchGrip || 1);
+    const curbLbs = Math.max(2200, car.curbLbs || (car.massKg ? car.massKg / 0.453592 : 3800));
+    const massKg = car.massKg || massKgFor(car.id, curbLbs);
+    car.massKg = massKg;
+    const G = 32.174;
+    // Prefer kg map; slug mass = kg / 14.5939 ≈ lbs/G
+    const massSlugs = (massKg / 0.453592) / G;
+    const peakTq = Math.max(120, car.tq || 350);
+    const peakHp = Math.max(120, car.hp || 350);
+    const ratios = car.ratios || liveRatios();
+    const fd = car.finalDrive || liveFinal();
+    const tire = car.tireCirc || liveTire();
+    const tireRadius = tire / (2 * Math.PI);
+    const cdA = car.cdA || 7.0;
+    const rearBias0 = car.rearBias || 0.48;
+    const wb = carWheelbaseFt(car);
+    const cgH = carCgHeightFt(car);
+    // Air density slug/ft³ · CdA → force (lbf) at speed ft/s
+    const RHO = 0.002378;
+    const CRR = 0.015;
 
     // Staging / countdown: rev on throttle, brake holds line
     if (!racing) {
       let th = car.isPlayer ? (input.throttle ? 1 : 0) : (car.aiThrottle || 0);
       if (car.isPlayer && input.brake) th *= 0.15;
+      const powerGrip = (car.power || 1) / gripMul;
       if (th > 0.2) {
         car.rpm = clamp(car.rpm + 5200 * th * dt, IDLE, rl);
-        // pre-stage burnout smoke if dumping throttle with low grip
         if (powerGrip > 1.15 && th > 0.7 && car.rpm > rl * 0.5) {
           car.wheelspin = Math.min(1, (car.wheelspin || 0) + dt * 1.2);
           spawnSmoke(car, car.isPlayer ? 0 : 1, 1.5);
@@ -696,20 +766,20 @@
       }
       car.speed = 0;
       car.mph = 0;
-      // ease pitch back
+      car.driveForce = 0;
+      car.gripForce = 0;
       car.bodyPitch = (car.bodyPitch || 0) * Math.max(0, 1 - 6 * dt);
       car.squatY = (car.squatY || 0) * Math.max(0, 1 - 6 * dt);
       return;
     }
 
-    // Player: hold GAS; AI: always on (with slight lift on shifts)
     let throttle = car.isPlayer ? (input.throttle ? 1 : 0.08) : (car.aiThrottle != null ? car.aiThrottle : 1);
     if (car.isPlayer && input.brake) throttle = 0;
     if (car.bogTimer > 0) throttle *= 0.35;
 
     let nitroMul = 1;
     if (car.nitroActive && car.nitro > 0) {
-      nitroMul = 1.35;
+      nitroMul = 1.38;
       car.nitro = Math.max(0, car.nitro - dt * 0.45);
       if (car.nitro <= 0) {
         car.nitroActive = false;
@@ -720,76 +790,118 @@
       }
     }
 
-    const pf = powerFactor(car.rpm, car) * car.power * throttle * nitroMul;
-    const ratios = car.ratios || liveRatios();
-    const baseAccel = 38 * pf * grip * (ratios[car.gear] / ratios[1]);
-    const drag = 0.00035 * car.speed * car.speed;
-    let accel = baseAccel - drag - car.speed * 0.02;
-    if (car.isPlayer && input.brake) accel = -55 - car.speed * 0.8;
+    // Engine torque (ft·lbf) from RPM curve × throttle × nitro; power cap near redline
+    const tqFac = torqueFactor(car.rpm, car);
+    let engTq = peakTq * tqFac * throttle * nitroMul;
+    const hpFromTq = (engTq * Math.max(car.rpm, 800)) / 5252;
+    const hpCap = peakHp * powerFactor(car.rpm, car) * throttle * nitroMul * 1.08;
+    if (hpFromTq > hpCap && car.rpm > 1000) {
+      engTq *= hpCap / Math.max(1, hpFromTq);
+    }
 
-    car.speed = Math.max(0, car.speed + accel * dt);
+    const gearR = ratios[car.gear] || ratios[1];
+    const DRIVETRAIN_EFF = 0.88;
+    const wheelTq = engTq * gearR * fd * DRIVETRAIN_EFF;
+    let driveForce = wheelTq / Math.max(0.8, tireRadius); // lbf at contact patch
+    const aspDriveForce = driveForce;
+
+    // Longitudinal weight transfer from prior accel (stored on car)
+    const prevAx = car._ax || 0;
+    const transfer = (curbLbs * prevAx * cgH) / Math.max(6, wb * G);
+    let rearLoad = curbLbs * rearBias0 + transfer;
+    let frontLoad = curbLbs - rearLoad;
+    rearLoad = clamp(rearLoad, curbLbs * 0.28, curbLbs * 0.82);
+    frontLoad = curbLbs - rearLoad;
+    car.rearLoadN = rearLoad;
+
+    // Tire grip: base μ × launchGrip, load sensitivity (μ drops as load rises)
+    const mu0 = 1.15 * gripMul;
+    const nomLoad = curbLbs * rearBias0;
+    const loadRatio = rearLoad / Math.max(1, nomLoad);
+    const muEff = mu0 * (1 - 0.18 * (loadRatio - 1)); // load sensitivity
+    const gripForce = Math.max(0, muEff) * rearLoad;
+    car.gripForce = gripForce;
+    car.driveForce = aspDriveForce;
+
+    let spinning = false;
+    let slip = 0;
+    if (throttle > 0.05 && driveForce > gripForce) {
+      slip = (driveForce - gripForce) / Math.max(1, gripForce);
+      spinning = true;
+      // excess torque → wheelspin; only gripForce transmitted longitudinally
+      driveForce = gripForce * (0.55 + 0.35 / (1 + slip * 1.4));
+      car.wheelspin = Math.min(1, (car.wheelspin || 0) + dt * (1.6 + Math.min(2.2, slip * 1.8)));
+      if (slip > 0.35 && Math.random() < 0.08 + slip * 0.1) {
+        car.bogTimer = Math.max(car.bogTimer, 0.12 + Math.min(0.35, slip * 0.2));
+      }
+      spawnSmoke(car, car.isPlayer ? 0 : 1, 1.2 + car.wheelspin * 2.5);
+    } else {
+      car.wheelspin = Math.max(0, (car.wheelspin || 0) - dt * 1.4);
+    }
+
+    // Resistances
+    const v = car.speed;
+    const aero = 0.5 * RHO * cdA * v * v;
+    const rolling = CRR * curbLbs * (v > 0.5 || throttle > 0.1 ? 1 : 0);
+    let brakeForce = 0;
+    if (car.isPlayer && input.brake) brakeForce = 0.85 * curbLbs + v * 18;
+
+    const net = driveForce - aero - rolling - brakeForce;
+    let ax = net / massSlugs; // ft/s²
+    // Soft launch clutch: limit huge first-gear spike when grip holds
+    if (car.gear === 1 && v < 8 && !spinning) ax = Math.min(ax, 28 * gripMul);
+    car._ax = ax;
+
+    car.speed = Math.max(0, car.speed + ax * dt);
     car.x += car.speed * dt * PX_PER_FOOT;
 
+    // RPM: tied to road speed unless spinning (then free-rev toward redline)
     const tied = rpmFromSpeed(car.speed, car.gear, car);
-    const climb = 5200 * pf * dt;
-    if (tied < rl) {
-      car.rpm = clamp(Math.max(tied, car.rpm * 0.15 + tied * 0.85) + (car.speed < 5 ? climb : 0), IDLE, rl + 150);
+    if (spinning && throttle > 0.2) {
+      const freeRev = 4800 * throttle * nitroMul * (0.6 + slip);
+      car.rpm = clamp(car.rpm + freeRev * dt, Math.max(tied * 0.7, IDLE), rl + 200);
+      // bleed a little speed while spinning (lost traction)
+      car.speed *= Math.max(0.92, 1 - slip * 0.04 * dt * 60);
+    } else if (tied < rl) {
+      car.rpm = clamp(car.rpm * 0.12 + tied * 0.88, IDLE, rl + 150);
+      if (car.speed < 4 && throttle > 0.4) {
+        car.rpm = clamp(car.rpm + 3200 * throttle * dt, IDLE, rl);
+      }
     } else {
       car.rpm = rl + Math.sin(performance.now() / 40) * 80;
     }
 
-    // Generalized wheelspin: power >> grip on launch (Hellcat + any hot mill)
-    let spinning = false;
-    if (car.speed < 14 && car.gear === 1 && throttle > 0.25) {
-      let launchMul = grip;
-      const rpmRatio = car.rpm / rl;
-      // dump throttle / nitro while grip-starved → spin
-      const spinThreat = powerGrip * (0.55 + 0.45 * rpmRatio) * (car.nitroActive ? 1.25 : 1) * throttle;
-      if (spinThreat > 1.05 || (car.trickyLaunch && car.nitroActive && rpmRatio > 0.5) || (car.trickyLaunch && rpmRatio > 0.72 && throttle > 0.85)) {
-        const excess = Math.min(1.5, spinThreat - 0.8 + (car.trickyLaunch ? 0.15 : 0));
-        launchMul *= Math.max(0.28, 1 - excess * 0.6);
-        spinning = true;
-        car.wheelspin = Math.min(1, (car.wheelspin || 0) + dt * (2.2 + (car.trickyLaunch ? 0.6 : 0)));
-        if (Math.random() < 0.1 * excess) {
-          car.bogTimer = Math.max(car.bogTimer, 0.15 + excess * 0.15);
-        }
-      } else {
-        car.wheelspin = Math.max(0, (car.wheelspin || 0) - dt * 1.5);
-      }
-      car.rpm = clamp(car.rpm + 6500 * throttle * nitroMul * dt * Math.max(0.4, launchMul), IDLE, rl);
-      const drive = speedFromRpm(car.rpm * 0.92, 1, car) * (car.bogTimer > 0 ? 0.45 : 1) * Math.min(1, launchMul + 0.12);
-      car.speed = drive;
-      car.x += car.speed * dt * PX_PER_FOOT * 0.35;
-      if (spinning || car.bogTimer > 0) spawnSmoke(car, car.isPlayer ? 0 : 1, 2 + (car.wheelspin || 0) * 3);
-      // light wheelie for high power / light rear (low launchGrip often = heavy torque)
-      if (powerGrip > 1.25 && throttle > 0.7 && car.speed > 2 && car.speed < 28 && !spinning) {
-        car.bodyPitch = Math.min(0.22, (car.bodyPitch || 0) + dt * 0.55 * (powerGrip - 1.1));
-        car.squatY = -Math.min(16, Math.abs(car.bodyPitch) * 70);
-      }
-    } else if (car.nitroActive && settings.tireSmoke) {
-      spawnSmoke(car, car.isPlayer ? 0 : 1, 0.35);
-      car.wheelspin = Math.max(0, (car.wheelspin || 0) - dt);
-    } else {
-      car.wheelspin = Math.max(0, (car.wheelspin || 0) - dt * 1.2);
+    if (car.nitroActive && settings.tireSmoke && !spinning) {
+      spawnSmoke(car, car.isPlayer ? 0 : 1, 0.3);
     }
 
-    // Body squat on accel / dive settle after shift flash
-    if (car.shiftFlash > 0.15) {
-      car.bodyPitch = Math.min(0.02, (car.bodyPitch || 0) * 0.9 - 0.06);
-      car.squatY = Math.min(8, 4 + (0.35 - car.shiftFlash) * 10);
-    } else if (throttle > 0.5 && car.speed > 20) {
-      // mild squat under power
-      const targetSquat = 3 * throttle;
-      car.squatY = (car.squatY || 0) + (targetSquat - (car.squatY || 0)) * Math.min(1, 8 * dt);
-      car.bodyPitch = (car.bodyPitch || 0) * Math.max(0, 1 - 4 * dt);
+    // Weight-transfer visuals: squat / dive; wheelie only if rear grip holds huge torque
+    const aspDrive = (peakTq * tqFac * throttle * nitroMul * gearR * fd * DRIVETRAIN_EFF) / Math.max(0.8, tireRadius);
+    const canWheelie = !spinning && throttle > 0.78 && car.speed > 2.5 && car.speed < 40
+      && aspDrive > gripForce * 0.95 && transfer > curbLbs * 0.10
+      && gripForce > curbLbs * 0.55 && (car.power || 1) / gripMul > 1.15;
+
+    if (car.shiftFlash > 0.12) {
+      car.bodyPitch = Math.min(0.02, (car.bodyPitch || 0) * 0.85 - 0.1);
+      car.squatY = Math.min(12, 6 + (0.35 - car.shiftFlash) * 14);
+    } else if (canWheelie) {
+      const rise = dt * 0.7 * Math.min(1.4, (aspDrive / Math.max(1, gripForce) - 0.9));
+      car.bodyPitch = Math.min(0.26, (car.bodyPitch || 0) + rise);
+      car.squatY = -Math.min(18, Math.abs(car.bodyPitch) * 75);
+    } else if (throttle > 0.45 && ax > 2) {
+      const targetSquat = clamp(4 + transfer * 0.012, 3, 14);
+      car.squatY = (car.squatY || 0) + (targetSquat - (car.squatY || 0)) * Math.min(1, 10 * dt);
+      car.bodyPitch = (car.bodyPitch || 0) * Math.max(0, 1 - 5 * dt) - 0.01 * Math.min(1, ax / 20);
+    } else if (brakeForce > 0 && v > 5) {
+      car.bodyPitch = Math.min(0.1, (car.bodyPitch || 0) + dt * 0.4);
+      car.squatY = Math.max(-8, (car.squatY || 0) - dt * 20);
     } else {
-      car.bodyPitch = (car.bodyPitch || 0) * Math.max(0, 1 - 5 * dt);
-      car.squatY = (car.squatY || 0) * Math.max(0, 1 - 5 * dt);
+      car.bodyPitch = (car.bodyPitch || 0) * Math.max(0, 1 - 5.5 * dt);
+      car.squatY = (car.squatY || 0) * Math.max(0, 1 - 5.5 * dt);
     }
 
     car.mph = car.speed * 3600 / 5280;
-    car.wheelRot += (car.speed + (car.wheelspin || 0) * 40) * dt * 2.5;
-    // exhaust flame pops on hard launch / nitro / wheelspin recovery
+    car.wheelRot += (car.speed + (car.wheelspin || 0) * 55) * dt * 2.5;
     const wantFlame = (car.nitroActive && car.nitro > 0) || ((car.wheelspin || 0) > 0.5 && throttle > 0.5) || (car.shiftFlash > 0.05);
     car.exhaustFlame = Math.max(0, (car.exhaustFlame || 0) + (wantFlame ? dt * 4 : -dt * 3));
     if (car.exhaustFlame > 1) car.exhaustFlame = 1;
@@ -1989,6 +2101,49 @@
       startRace();
     });
   }
+
+  // —— Landscape preference / portrait rotate gate ——
+  // Desktop always allowed; gate only on phone/tablet in portrait.
+  const rotateGate = document.getElementById('rotate-gate');
+  function isDesktopLike() {
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    const noHover = window.matchMedia('(hover: none)').matches;
+    const touchPoints = (navigator.maxTouchPoints || 0) > 0;
+    // Fine pointer + hover = typical desktop/laptop; skip gate even if window is tall.
+    if (!coarse && !noHover && !touchPoints) return true;
+    if (!coarse && window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 900) return true;
+    return false;
+  }
+  function isPortrait() {
+    if (isDesktopLike()) return false;
+    return window.matchMedia('(orientation: portrait)').matches || window.innerHeight > window.innerWidth * 1.05;
+  }
+  function syncOrientationGate() {
+    const portrait = isPortrait();
+    document.documentElement.classList.toggle('portrait', portrait);
+    document.documentElement.classList.toggle('landscape', !portrait);
+    if (rotateGate) rotateGate.classList.toggle('hidden', !portrait);
+    // Soft-lock when possible (installed PWA / supported browsers)
+    if (!portrait && !isDesktopLike() && screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    }
+  }
+  syncOrientationGate();
+  window.addEventListener('orientationchange', () => setTimeout(syncOrientationGate, 80));
+  window.addEventListener('resize', syncOrientationGate);
+  if (window.matchMedia) {
+    try {
+      window.matchMedia('(orientation: portrait)').addEventListener('change', syncOrientationGate);
+    } catch (_) {
+      // older Safari
+      window.matchMedia('(orientation: portrait)').addListener(syncOrientationGate);
+    }
+  }
+  document.addEventListener('pointerdown', () => {
+    if (!isDesktopLike() && screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    }
+  }, { passive: true });
 
   // —— Boot ——
   if (window.SSRAudio) SSRAudio.setSettings(settings);
