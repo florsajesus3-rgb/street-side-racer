@@ -67,12 +67,12 @@ html, body {
 
 .race-gap {
   position: absolute;
-  top: max(14px, env(safe-area-inset-top));
+  top: max(8px, env(safe-area-inset-top));
   left: 50%; transform: translateX(-50%);
-  width: min(320px, 58vw);
-  background: rgba(0,0,0,0.65);
-  border: 2px solid #3a3a44;
-  padding: 6px 10px 8px;
+  width: min(240px, 36vw);
+  background: rgba(0,0,0,0.5);
+  border: 1px solid #3a3a44;
+  padding: 3px 8px 4px;
   pointer-events: none;
   font-variant-numeric: tabular-nums;
 }
@@ -99,13 +99,14 @@ html, body {
 
 .nitro {
   position: absolute;
-  left: max(14px, env(safe-area-inset-left));
-  top: 42%; transform: translateY(-50%);
-  width: 78px; height: 78px; border-radius: 50%;
-  border: 3px solid #3a4a5a; background: rgba(8,10,16,0.75);
+  left: max(10px, env(safe-area-inset-left));
+  top: auto; bottom: max(96px, calc(env(safe-area-inset-bottom) + 88px));
+  transform: none;
+  width: 56px; height: 56px; border-radius: 50%;
+  border: 2px solid #3a4a5a; background: rgba(8,10,16,0.55);
   color: #cfe8ff; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; font-size: 10px; font-weight: 800; letter-spacing: 1px;
+  gap: 1px; font-size: 9px; font-weight: 800; letter-spacing: 1px;
 }
 .nitro .nitro-icon { width: 24px; height: 24px; }
 .nitro .nitro-ring {
@@ -123,26 +124,26 @@ html, body {
 .hud-bottom {
   position: absolute;
   left: 0; right: 0; bottom: 0;
-  height: clamp(120px, 26vh, 180px);
+  height: clamp(72px, 16vh, 110px);
   pointer-events: none;
   display: flex; align-items: flex-end; justify-content: center;
-  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
 }
 .hud-bottom > * { pointer-events: auto; }
 
 .pedal {
   position: absolute;
-  bottom: max(10px, env(safe-area-inset-bottom));
-  width: clamp(70px, 15vw, 100px);
-  height: clamp(88px, 20vh, 120px);
-  border: 3px solid #555;
-  background: #2a2c32;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  width: clamp(52px, 9vw, 68px);
+  height: clamp(58px, 12vh, 72px);
+  border: 2px solid #555;
+  background: rgba(42,44,50,0.72);
   color: #ddd;
   font-weight: 900; letter-spacing: 1px;
   cursor: pointer; border-radius: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-  padding-bottom: 10px;
-  box-shadow: inset 0 0 0 2px #1a1a1e, 3px 3px 0 #000;
+  padding-bottom: 6px;
+  box-shadow: inset 0 0 0 1px #1a1a1e, 2px 2px 0 #000;
 }
 .pedal-grid {
   position: absolute; inset: 8px 8px 28px;
@@ -155,7 +156,7 @@ html, body {
 .pedal:active, .pedal.pressed { transform: translateY(2px); background: #3a3c44; }
 .pedal-brake { left: max(12px, env(safe-area-inset-left)); border-color: #884444; }
 .pedal-brake.pressed, .pedal-brake:active { background: #5a2020; color: #fff; }
-.pedal-gas { left: max(calc(12px + clamp(70px, 15vw, 100px) + 10px), calc(env(safe-area-inset-left) + 80px)); border-color: #448844; }
+.pedal-gas { left: max(calc(10px + clamp(52px, 9vw, 68px) + 8px), calc(env(safe-area-inset-left) + 64px)); border-color: #448844; }
 .pedal-gas.pressed, .pedal-gas:active { background: #1e4a1e; color: #b8ff8a; }
 
 .tach-cluster {
@@ -165,8 +166,9 @@ html, body {
 }
 .tach {
   position: relative;
-  width: min(190px, 22vw); height: min(190px, 22vw);
+  width: min(112px, 14vw, 22vh); height: min(112px, 14vw, 22vh);
   pointer-events: none;
+  opacity: 0.92;
 }
 #tach-canvas { width: 100%; height: 100%; display: block; image-rendering: auto; }
 .tach-readout {
@@ -188,12 +190,12 @@ html, body {
 }
 
 .shift {
-  width: clamp(52px, 11vw, 72px); height: clamp(52px, 11vw, 72px);
-  border: 3px solid #c8c8c8;
-  background: #1e2028; color: #fff;
-  font-size: clamp(28px, 7vw, 40px); font-weight: 300;
+  width: clamp(40px, 6vw, 48px); height: clamp(40px, 6vw, 48px);
+  border: 2px solid #c8c8c8;
+  background: rgba(30,32,40,0.75); color: #fff;
+  font-size: clamp(20px, 4vw, 26px); font-weight: 300;
   line-height: 1; cursor: pointer; border-radius: 0;
-  box-shadow: 3px 3px 0 #000;
+  box-shadow: 2px 2px 0 #000;
 }
 .shift:active, .shift.pressed {
   background: #2a5030; border-color: #7CFF3A;
@@ -207,12 +209,12 @@ html, body {
 }
 .banner.show { opacity: 1; }
 .banner .go {
-  font-size: clamp(48px, 14vw, 96px); font-weight: 900;
-  color: #7CFF3A; letter-spacing: 2px;
+  font-size: clamp(22px, 5vw, 36px); font-weight: 900;
+  letter-spacing: 2px;
   display: inline-block; line-height: 0.9;
-  text-shadow: 4px 4px 0 #000;
+  text-shadow: 2px 2px 0 #000;
   background: #ffe14a; color: #111;
-  padding: 6px 18px; border: 4px solid #111;
+  padding: 4px 12px; border: 2px solid #111;
   animation: banner-pop 0.28s ease-out;
 }
 .banner .sub {
@@ -533,17 +535,40 @@ button.ghost.slim, button.slim {
 .toggle-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: #ffe14a; }
 .slider-row input[type="range"] { flex: 1; max-width: 62%; accent-color: #ffe14a; }
 
-/* —— Landscape gameplay HUD —— */
+/* —— Landscape gameplay HUD (S24 Ultra / ultra-wide) —— */
 @media (orientation: landscape) {
-  .hud-bottom { height: clamp(110px, 24vh, 168px); }
-  .tach { width: min(180px, 20vw); height: min(180px, 20vw); }
-  .nitro { top: 44%; width: 72px; height: 72px; }
-  .race-gap { width: min(300px, 42vw); }
-  .pedal {
-    width: clamp(64px, 12vw, 92px);
-    height: clamp(78px, 18vh, 108px);
+  .hud-bottom { height: clamp(68px, 15vh, 96px); }
+  .tach { width: min(104px, 12vw, 20vh); height: min(104px, 12vw, 20vh); }
+  .nitro {
+    top: auto;
+    bottom: max(88px, calc(env(safe-area-inset-bottom) + 78px));
+    width: 52px; height: 52px;
   }
-  .shift { width: clamp(48px, 9vw, 64px); height: clamp(48px, 9vw, 64px); }
+  .nitro .nitro-icon { width: 18px; height: 18px; }
+  .race-gap { width: min(220px, 32vw); padding: 2px 6px 3px; }
+  .gap-row { font-size: 11px; }
+  .gap-meter { height: 10px; margin: 2px 0; }
+  .pedal {
+    width: clamp(48px, 8vw, 62px);
+    height: clamp(54px, 11vh, 68px);
+  }
+  .pedal-lab { font-size: 10px; }
+  .shift { width: 42px; height: 42px; font-size: 22px; }
+  .banner { top: 18%; }
+  .banner .go { font-size: clamp(20px, 4.2vw, 30px); }
+  .banner .sub { font-size: clamp(12px, 2.2vw, 16px); margin-top: 6px; }
+  #gear-label, #speed-label { font-size: clamp(14px, 2.6vw, 20px); }
+  .timer { font-size: clamp(18px, 3.5vw, 28px); }
+}
+
+/* Extra-wide phones (S24 Ultra class ~19:9+) */
+@media (orientation: landscape) and (min-aspect-ratio: 18/9) {
+  .hud-bottom { height: clamp(64px, 14vh, 88px); }
+  .tach { width: min(96px, 11vw, 18vh); height: min(96px, 11vw, 18vh); }
+  .pedal {
+    width: clamp(46px, 7.5vw, 58px);
+    height: clamp(50px, 10vh, 64px);
+  }
 }
 
 /* Portrait: allow garage menus, but hard-gate race HUD via rotate overlay */

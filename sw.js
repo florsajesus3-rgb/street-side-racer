@@ -1,4 +1,4 @@
-const CACHE = 'ssr-pixel-v6';
+const CACHE = 'ssr-pixel-v7';
 const ASSETS = [
   './',
   './index.html',
