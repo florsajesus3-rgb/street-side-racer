@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0a0a12" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <title>Street Side Racer</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" width="1280" height="720"></canvas>
+    <div id="fps-counter" class="fps-counter hidden">-- FPS</div>
+
+    <!-- HUD overlay -->
+    <div id="hud" class="hidden">
+      <button id="btn-pause" class="hud-btn pause" aria-label="Pause">❚❚</button>
+      <div id="timer" class="timer">0.00</div>
+
+      <button id="btn-nitro" class="nitro" aria-label="Nitrous">
+        <svg viewBox="0 0 64 64" class="nitro-icon" aria-hidden="true">
+          <ellipse cx="32" cy="38" rx="14" ry="18" fill="none" stroke="currentColor" stroke-width="3"/>
+          <rect x="26" y="12" width="12" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="3"/>
+          <path d="M22 28h20" stroke="currentColor" stroke-width="3"/>
+        </svg>
+        <span>NITROUS</span>
+        <svg class="nitro-ring" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="44" pathLength="100" />
+        </svg>
+      </button>
+
+      <div id="tach" class="tach">
+        <canvas id="tach-canvas" width="280" height="280"></canvas>
+        <div class="tach-readout">
+          <div id="gear-label">1<span>ST</span></div>
+          <div id="speed-label">0<span>MPH</span></div>
+        </div>
+      </div>
+
+      <button id="btn-down" class="shift shift-minus" aria-label="Downshift">−</button>
+      <button id="btn-up" class="shift shift-plus" aria-label="Upshift">+</button>
+
+      <div id="banner" class="banner"></div>
+    </div>
+
+    <!-- Main menu -->
+    <div id="menu" class="overlay">
+      <div class="menu-card">
+        <h1>STREET SIDE<br/><span>RACER</span></h1>
+        <p class="tagline">Free · No ads · No paywalls · Earn cash to upgrade</p>
+        <div class="cash-pill" id="menu-cash">$0</div>
+        <button id="btn-garage" class="primary">GARAGE</button>
+        <button id="btn-settings" class="ghost">SETTINGS</button>
+        <button id="btn-howto" class="ghost">HOW TO PLAY</button>
+        <p class="hint">Tip: Add to Home Screen on Android Chrome for full-screen play</p>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div id="settings" class="overlay hidden">
+      <div class="menu-card settings-card">
+        <h2>SETTINGS</h2>
+        <p class="tagline">100% free · Graphics &amp; audio · Persists on this device</p>
+
+        <div class="settings-section">
+          <div class="settings-label">GRAPHICS PRESET</div>
+          <div class="preset-row" id="gfx-presets">
+            <button type="button" data-preset="Low" class="preset-btn">LOW</button>
+            <button type="button" data-preset="Medium" class="preset-btn">MED</button>
+            <button type="button" data-preset="High" class="preset-btn active">HIGH</button>
+            <button type="button" data-preset="Ultra" class="preset-btn">ULTRA</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-label">RESOLUTION SCALE</div>
+          <div class="preset-row" id="res-presets">
+            <button type="button" data-res="720" class="preset-btn">720</button>
+            <button type="button" data-res="1080" class="preset-btn active">1080</button>
+            <button type="button" data-res="1440" class="preset-btn">1440</button>
+            <button type="button" data-res="2160" class="preset-btn">4K</button>
+          </div>
+          <p class="settings-hint">Backing store height; clamped to screen × device pixel ratio</p>
+        </div>
+
+        <div class="settings-section toggles">
+          <label class="toggle-row"><input type="checkbox" id="opt-smoke" checked /> Tire smoke</label>
+          <label class="toggle-row"><input type="checkbox" id="opt-blur" checked /> Motion blur</label>
+          <label class="toggle-row"><input type="checkbox" id="opt-reflect" checked /> Road reflections</label>
+          <label class="toggle-row"><input type="checkbox" id="opt-crowd" checked /> Crowd / detail density</label>
+          <label class="toggle-row"><input type="checkbox" id="opt-fps" /> Show FPS counter</label>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-label">AUDIO</div>
+          <label class="toggle-row"><input type="checkbox" id="opt-mute" /> Mute</label>
+          <label class="slider-row">Master <input type="range" id="vol-master" min="0" max="100" value="75" /></label>
+          <label class="slider-row">Engine <input type="range" id="vol-engine" min="0" max="100" value="70" /></label>
+          <label class="slider-row">SFX <input type="range" id="vol-sfx" min="0" max="100" value="70" /></label>
+          <label class="toggle-row"><input type="checkbox" id="opt-crowd-bed" checked /> Crowd bed (low)</label>
+        </div>
+
+        <button id="btn-settings-back" class="primary">DONE</button>
+      </div>
+    </div>
+
+    <!-- Garage -->
+    <div id="garage" class="overlay hidden">
+      <div class="garage-shell">
+        <header class="garage-top">
+          <button id="btn-garage-back" class="ghost slim">← MENU</button>
+          <h2>GARAGE</h2>
+          <div class="cash-pill" id="garage-cash">$0</div>
+        </header>
+
+        <div class="garage-preview">
+          <canvas id="garage-canvas" width="640" height="220"></canvas>
+          <div class="car-nav">
+            <button id="btn-car-prev" class="nav-arrow" aria-label="Previous car">‹</button>
+            <div class="car-meta">
+              <div id="garage-car-name">Dodge Charger</div>
+              <div id="garage-car-stats" class="car-stats-line"></div>
+            </div>
+            <button id="btn-car-next" class="nav-arrow" aria-label="Next car">›</button>
+          </div>
+          <div id="car-dots" class="car-dots"></div>
+        </div>
+
+        <div class="garage-tabs">
+          <button class="tab active" data-tab="eng">ENGINE</button>
+          <button class="tab" data-tab="perf">PERFORMANCE</button>
+          <button class="tab" data-tab="cos">COSMETICS</button>
+        </div>
+
+        <div id="panel-eng" class="upgrade-panel"></div>
+        <div id="panel-perf" class="upgrade-panel hidden"></div>
+        <div id="panel-cos" class="upgrade-panel hidden"></div>
+
+        <footer class="garage-foot">
+          <button id="btn-garage-race" class="primary">START RACE</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- How to -->
+    <div id="howto" class="overlay hidden">
+      <div class="menu-card">
+        <h2>HOW TO PLAY</h2>
+        <ul class="howto-list">
+          <li>Open <b>GARAGE</b> — pick a car (Charger is the default ride) — all free</li>
+          <li>Choose a <b>factory engine</b>, then stack earnable performance &amp; cosmetics</li>
+          <li>Watch the lights — launch when they go <b style="color:#7CFF3A">GREEN</b></li>
+          <li>Car auto-accelerates — you <b>shift</b> and use <b>nitrous</b></li>
+          <li>Upshift (+) in the <b style="color:#7CFF3A">green tach zone</b> for a perfect shift</li>
+          <li>Shift too early = bog · too late = redline cut</li>
+          <li>Win races to earn more cash — no real money, ever</li>
+          <li>Use <b>SETTINGS</b> for 1080p/4K scale, effects, and realistic engine audio</li>
+        </ul>
+        <button id="btn-howto-back" class="primary">GOT IT</button>
+      </div>
+    </div>
+
+    <!-- Pause -->
+    <div id="pause" class="overlay hidden">
+      <div class="menu-card">
+        <h2>PAUSED</h2>
+        <button id="btn-resume" class="primary">RESUME</button>
+        <button id="btn-pause-settings" class="ghost">SETTINGS</button>
+        <button id="btn-quit" class="ghost">QUIT TO MENU</button>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="result" class="overlay hidden">
+      <div class="menu-card">
+        <h2 id="result-title">YOU WIN!</h2>
+        <p id="result-stats" class="stats"></p>
+        <p id="result-payout" class="payout"></p>
+        <button id="btn-again" class="primary">RACE AGAIN</button>
+        <button id="btn-result-garage" class="ghost">GARAGE</button>
+        <button id="btn-menu" class="ghost">MAIN MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/cars.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
