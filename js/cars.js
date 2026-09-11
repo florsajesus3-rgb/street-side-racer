@@ -168,6 +168,9 @@
     { id: 'body', name: 'Body kit', max: 3, cost: [0, 500, 1200, 2200], desc: 'Cosmetic widebody' },
   ];
 
+  const RIM_STYLES = ['spoke5', 'mesh', 'star', 'deepdish', 'turbine'];
+  const UNDERGLOW_OPTS = ['off', 'blue', 'purple', 'red', 'green', 'cyan'];
+
   const COSMETIC_COLORS = {
     mustang: ['#c41230', '#111111', '#f5f5f5', '#0033a0'],
     supra: ['#d4d4d4', '#e10600', '#222222', '#1b4d3e'],
@@ -190,10 +193,14 @@
     const upgrades = {};
     const colors = {};
     const engines = {};
+    const rims = {};
+    const underglow = {};
     for (const c of CARS) {
       upgrades[c.id] = { engine: 0, tires: 0, nitro: 0, ecu: 0, body: 0 };
       colors[c.id] = 0;
       engines[c.id] = c.defaultEngine;
+      rims[c.id] = 0;
+      underglow[c.id] = 'off';
     }
     return {
       cash: 500,
@@ -202,6 +209,8 @@
       upgrades,
       colors,
       engines,
+      rims,
+      underglow,
       wins: 0,
       races: 0,
     };
@@ -214,9 +223,13 @@
       const p = { ...defaultProgress(), ...JSON.parse(raw) };
       p.unlocked = CARS.map((c) => c.id);
       p.engines = p.engines || {};
+      p.rims = p.rims || {};
+      p.underglow = p.underglow || {};
       for (const c of CARS) {
         p.upgrades[c.id] = { engine: 0, tires: 0, nitro: 0, ecu: 0, body: 0, ...(p.upgrades[c.id] || {}) };
         if (p.colors[c.id] == null) p.colors[c.id] = 0;
+        if (p.rims[c.id] == null) p.rims[c.id] = 0;
+        if (!p.underglow[c.id]) p.underglow[c.id] = 'off';
         if (!p.engines[c.id] || !getEngine(c.id, p.engines[c.id])) {
           p.engines[c.id] = c.defaultEngine;
         }
@@ -283,7 +296,28 @@
       hp: eng ? eng.hp : null,
       tq: eng ? eng.tq : null,
       trickyLaunch: !!(eng && eng.launchGripMul < 0.85),
+      rimIndex: (progress.rims && progress.rims[carId]) || 0,
+      rimStyle: RIM_STYLES[((progress.rims && progress.rims[carId]) || 0) % RIM_STYLES.length],
+      underglow: (progress.underglow && progress.underglow[carId]) || 'off',
     };
+  }
+
+  function cycleRim(carId) {
+    const p = load();
+    p.rims = p.rims || {};
+    p.rims[carId] = ((p.rims[carId] || 0) + 1) % RIM_STYLES.length;
+    save(p);
+    return p;
+  }
+
+  function cycleUnderglow(carId) {
+    const p = load();
+    p.underglow = p.underglow || {};
+    const cur = p.underglow[carId] || 'off';
+    const i = UNDERGLOW_OPTS.indexOf(cur);
+    p.underglow[carId] = UNDERGLOW_OPTS[(i + 1) % UNDERGLOW_OPTS.length];
+    save(p);
+    return p;
   }
 
   function upgradeCost(carId, upgradeId, progress) {
@@ -349,6 +383,8 @@
     ENGINES,
     UPGRADE_DEFS,
     COSMETIC_COLORS,
+    RIM_STYLES,
+    UNDERGLOW_OPTS,
     load,
     save,
     getCar,
@@ -359,6 +395,8 @@
     buyUpgrade,
     selectEngine,
     cycleColor,
+    cycleRim,
+    cycleUnderglow,
     selectCar,
     rewardRace,
   };

@@ -148,10 +148,15 @@
       bogTimer: 0,
       shiftFlash: 0,
       wheelRot: 0,
+      id: isPlayer && a ? a.id : 'camaro',
       color: isPlayer && a ? a.color : (isPlayer ? '#d62828' : rivalColor),
       accent: isPlayer && a ? a.accent : (isPlayer ? '#ffcc00' : '#a8c8ff'),
       name: isPlayer && a ? a.short : (isPlayer ? 'YOU' : 'RIVAL'),
       scaleX: isPlayer && a ? a.scaleX : 1,
+      bodyLevel: isPlayer && a ? (a.bodyLevel || 0) : 0,
+      rimIndex: isPlayer && a ? (a.rimIndex || 0) : 0,
+      rimStyle: isPlayer && a ? (a.rimStyle || 'spoke5') : 'spoke5',
+      underglow: isPlayer && a ? (a.underglow || 'off') : 'off',
       launchGrip: isPlayer && a ? a.launchGrip : 1,
       trickyLaunch: !!(isPlayer && a && a.trickyLaunch),
       engineId: isPlayer && a ? a.engineId : null,
@@ -962,138 +967,29 @@
   }
 
   function drawCarBody(car, screenX, y, scale, reflectionPass) {
+    const quality = (settings && settings.preset) || 'High';
+    const opts = {
+      quality,
+      reflectionPass: !!reflectionPass,
+      time: performance.now(),
+      showLabel: !reflectionPass,
+    };
+    if (window.SSRCarsDraw) {
+      SSRCarsDraw.drawAt(ctx, car, screenX, y, scale, opts);
+      return;
+    }
+    // fallback minimal if draw module missing
     ctx.save();
     ctx.translate(screenX, y);
     ctx.scale(scale * (car.scaleX || 1), scale);
-
-    if (!reflectionPass) {
-      ctx.fillStyle = 'rgba(0,0,0,0.45)';
-      ctx.beginPath();
-      ctx.ellipse(0, 8, 90, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    if (car.nitroActive && car.nitro > 0) {
-      const flick = 0.7 + Math.random() * 0.3;
-      ctx.fillStyle = `rgba(80,180,255,${0.55 * flick})`;
-      ctx.beginPath();
-      ctx.moveTo(-88, -18);
-      ctx.lineTo(-88 - 40 * flick, -8);
-      ctx.lineTo(-88, 2);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = `rgba(200,240,255,${0.7 * flick})`;
-      ctx.beginPath();
-      ctx.moveTo(-88, -14);
-      ctx.lineTo(-88 - 22 * flick, -8);
-      ctx.lineTo(-88, -2);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    // lighting: darker rocker, lit top
-    const body = car.color;
-    const lit = shadeColor(body, 18);
-    const shade = shadeColor(body, -28);
-
-    ctx.fillStyle = shade;
-    roundRect(ctx, -94, -24, 188, 24, 5);
+    ctx.fillStyle = car.color || '#888';
+    roundRect(ctx, -90, -36, 180, 30, 4);
     ctx.fill();
-
-    ctx.fillStyle = body;
-    roundRect(ctx, -90, -36, 180, 24, 4);
-    ctx.fill();
-
-    // roof highlight
-    const hg = ctx.createLinearGradient(0, -58, 0, -34);
-    hg.addColorStop(0, lit);
-    hg.addColorStop(1, body);
-    ctx.fillStyle = hg;
-    ctx.beginPath();
-    ctx.moveTo(-30, -34);
-    ctx.lineTo(-10, -60);
-    ctx.lineTo(50, -60);
-    ctx.lineTo(76, -34);
-    ctx.closePath();
-    ctx.fill();
-
-    // sharper silhouette edge
-    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-90, -12);
-    ctx.lineTo(-90, -34);
-    ctx.lineTo(-30, -34);
-    ctx.lineTo(-10, -60);
-    ctx.lineTo(50, -60);
-    ctx.lineTo(76, -34);
-    ctx.lineTo(92, -34);
-    ctx.lineTo(94, -12);
-    ctx.stroke();
-
-    ctx.fillStyle = '#111';
-    ctx.fillRect(80, -18, 16, 10);
-    ctx.fillRect(-100, -18, 12, 10);
-
-    // glass with specular
-    const glass = ctx.createLinearGradient(-20, -56, 60, -36);
-    glass.addColorStop(0, 'rgba(190,220,245,0.7)');
-    glass.addColorStop(0.5, 'rgba(120,160,200,0.45)');
-    glass.addColorStop(1, 'rgba(220,240,255,0.65)');
-    ctx.fillStyle = glass;
-    ctx.beginPath();
-    ctx.moveTo(-22, -36);
-    ctx.lineTo(-6, -56);
-    ctx.lineTo(46, -56);
-    ctx.lineTo(66, -36);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(18, -56, 4, 20);
-
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-10, -34); ctx.lineTo(-10, -8);
-    ctx.stroke();
-    ctx.fillStyle = car.accent;
-    ctx.fillRect(-60, -22, 56, 4);
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.font = 'bold 7px sans-serif';
-    ctx.fillText('WORK', -55, -12);
-    ctx.fillText('ACCUAIR', 8, -12);
-
-    // headlights glow
-    ctx.fillStyle = '#fff6e8';
-    ctx.fillRect(88, -30, 10, 13);
-    ctx.fillStyle = 'rgba(255,240,200,0.35)';
-    ctx.fillRect(96, -28, 14, 9);
-    ctx.fillStyle = '#ff2a2a';
-    ctx.fillRect(-98, -30, 8, 13);
-
-    if (!reflectionPass) {
-      drawWheel(-54, 4, car.wheelRot);
-      drawWheel(58, 4, car.wheelRot);
-    }
-
-    if (car.shiftFlash > 0) {
-      ctx.strokeStyle = `rgba(124,255,58,${car.shiftFlash})`;
-      ctx.lineWidth = 3;
-      roundRect(ctx, -86, -58, 172, 66, 10);
-      ctx.stroke();
-    }
-
-    if (!reflectionPass) {
-      ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.font = 'bold 12px sans-serif';
-      ctx.fillText(car.name, -20, -68);
-    }
-
     ctx.restore();
   }
 
   function shadeColor(hex, amt) {
+    if (window.SSRCarsDraw && SSRCarsDraw.shadeColor) return SSRCarsDraw.shadeColor(hex, amt);
     try {
       let h = hex.replace('#', '');
       if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
@@ -1111,6 +1007,13 @@
   }
 
   function drawWheel(x, y, rot) {
+    if (window.SSRCarsDraw) {
+      SSRCarsDraw.drawWheel(ctx, x, y, rot, {
+        quality: (settings && settings.preset) || 'High',
+        rimStyle: 'spoke5',
+      });
+      return;
+    }
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rot);
@@ -1118,24 +1021,6 @@
     ctx.beginPath();
     ctx.arc(0, 0, 18, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#e0e0e0';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(0, 0, 15, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = '#a8b0b8';
-    ctx.beginPath();
-    ctx.arc(0, 0, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#f2f2f2';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * 3, Math.sin(a) * 3);
-      ctx.lineTo(Math.cos(a) * 12, Math.sin(a) * 12);
-      ctx.stroke();
-    }
     ctx.restore();
   }
 
@@ -1403,47 +1288,37 @@
     refreshActive();
     const a = active;
     if (!a) return;
-    // reuse simple side profile
-    gctx.save();
-    gctx.translate(w * 0.5, h * 0.72);
-    gctx.scale(1.55 * (a.scaleX || 1), 1.55);
     const car = {
-      color: a.color, accent: a.accent, name: a.short,
-      nitroActive: false, nitro: 0, shiftFlash: 0, wheelRot: performance.now() / 400,
-      scaleX: 1, trickyLaunch: a.trickyLaunch,
+      id: a.id,
+      color: a.color,
+      accent: a.accent,
+      name: a.short,
+      nitroActive: false,
+      nitro: 0,
+      shiftFlash: 0,
+      wheelRot: performance.now() / 400,
+      scaleX: 1,
+      bodyLevel: a.bodyLevel || 0,
+      rimIndex: a.rimIndex || 0,
+      rimStyle: a.rimStyle || 'spoke5',
+      underglow: a.underglow || 'off',
+      trickyLaunch: a.trickyLaunch,
     };
-    // inline mini draw without world camera
-    const old = { drawCarBody };
-    // manual mini
-    gctx.fillStyle = 'rgba(0,0,0,0.4)';
-    gctx.beginPath(); gctx.ellipse(0, 8, 90, 12, 0, 0, Math.PI * 2); gctx.fill();
-    gctx.fillStyle = shadeColor(a.color, -24);
-    roundRect(gctx, -94, -24, 188, 24, 5); gctx.fill();
-    gctx.fillStyle = a.color;
-    roundRect(gctx, -90, -36, 180, 24, 4); gctx.fill();
-    gctx.fillStyle = shadeColor(a.color, 16);
-    gctx.beginPath();
-    gctx.moveTo(-30, -34); gctx.lineTo(-10, -60); gctx.lineTo(50, -60); gctx.lineTo(76, -34); gctx.closePath(); gctx.fill();
-    gctx.fillStyle = 'rgba(190,220,245,0.65)';
-    gctx.beginPath();
-    gctx.moveTo(-22, -36); gctx.lineTo(-6, -56); gctx.lineTo(46, -56); gctx.lineTo(66, -36); gctx.closePath(); gctx.fill();
-    gctx.fillStyle = a.accent; gctx.fillRect(-60, -22, 56, 4);
-    gctx.fillStyle = '#fff6e8'; gctx.fillRect(88, -30, 10, 13);
-    gctx.fillStyle = '#ff2a2a'; gctx.fillRect(-98, -30, 8, 13);
-    // wheels
-    const wr = performance.now() / 400;
-    [-54, 58].forEach((wx) => {
-      gctx.save(); gctx.translate(wx, 4); gctx.rotate(wr);
-      gctx.fillStyle = '#0a0a0a'; gctx.beginPath(); gctx.arc(0, 0, 18, 0, Math.PI * 2); gctx.fill();
-      gctx.strokeStyle = '#ddd'; gctx.lineWidth = 3; gctx.beginPath(); gctx.arc(0, 0, 15, 0, Math.PI * 2); gctx.stroke();
-      gctx.restore();
-    });
+    if (window.SSRCarsDraw) {
+      SSRCarsDraw.drawAt(gctx, car, w * 0.5, h * 0.72, 1.55 * (a.scaleX || 1), {
+        quality: (settings && settings.preset) || 'High',
+        reflectionPass: false,
+        time: performance.now(),
+        showLabel: false,
+      });
+    }
     if (a.trickyLaunch) {
+      gctx.save();
       gctx.fillStyle = 'rgba(255,120,60,0.85)';
       gctx.font = 'bold 10px sans-serif';
-      gctx.fillText('HELLCAT LAUNCH', -48, -72);
+      gctx.fillText('HELLCAT LAUNCH', w * 0.5 - 48, h * 0.72 - 78);
+      gctx.restore();
     }
-    gctx.restore();
   }
 
   function renderGarage() {
@@ -1568,6 +1443,46 @@
       row.appendChild(b);
       panelCos.appendChild(row);
     }
+
+    const tRim = document.createElement('div');
+    tRim.className = 'cos-section-title';
+    tRim.textContent = 'RIMS (FREE)';
+    panelCos.appendChild(tRim);
+    const rimRow = document.createElement('div');
+    rimRow.className = 'up-row';
+    const rimName = (SSRCars.RIM_STYLES && SSRCars.RIM_STYLES[(progress.rims && progress.rims[car.id]) || 0]) || 'spoke5';
+    rimRow.innerHTML = `<div class="up-info"><div class="up-name">${rimName}</div>
+      <div class="up-desc">Wheel face style</div></div>`;
+    const rimBtn = document.createElement('button');
+    rimBtn.className = 'up-buy';
+    rimBtn.textContent = 'CYCLE';
+    rimBtn.addEventListener('click', () => {
+      progress = SSRCars.cycleRim(car.id);
+      refreshActive();
+      renderGarage();
+    });
+    rimRow.appendChild(rimBtn);
+    panelCos.appendChild(rimRow);
+
+    const tGlow = document.createElement('div');
+    tGlow.className = 'cos-section-title';
+    tGlow.textContent = 'UNDERGLOW (FREE)';
+    panelCos.appendChild(tGlow);
+    const glowRow = document.createElement('div');
+    glowRow.className = 'up-row';
+    const glowName = (progress.underglow && progress.underglow[car.id]) || 'off';
+    glowRow.innerHTML = `<div class="up-info"><div class="up-name">${glowName}</div>
+      <div class="up-desc">Neon underbody light</div></div>`;
+    const glowBtn = document.createElement('button');
+    glowBtn.className = 'up-buy';
+    glowBtn.textContent = 'CYCLE';
+    glowBtn.addEventListener('click', () => {
+      progress = SSRCars.cycleUnderglow(car.id);
+      refreshActive();
+      renderGarage();
+    });
+    glowRow.appendChild(glowBtn);
+    panelCos.appendChild(glowRow);
 
     // tab visibility
     panelEng.classList.toggle('hidden', garageTab !== 'eng');
