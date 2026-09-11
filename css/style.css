@@ -535,7 +535,91 @@ button.ghost.slim, button.slim {
 .toggle-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: #ffe14a; }
 .slider-row input[type="range"] { flex: 1; max-width: 62%; accent-color: #ffe14a; }
 
-/* —— Landscape gameplay HUD (S24 Ultra / ultra-wide) —— */
+/* —— Portrait-first race HUD (S24 Ultra tall) —— */
+/* Keep middle ~50% clear for cars; controls sit in bottom band */
+@media (orientation: portrait) {
+  .upgrade-panel { max-height: 22vh; }
+  .car-grid { max-height: 22vh; }
+
+  .hud-btn.pause {
+    top: max(10px, env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
+    width: 44px; height: 44px; font-size: 14px;
+  }
+  .timer {
+    top: max(10px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    font-size: clamp(22px, 6vw, 32px);
+  }
+  .race-gap {
+    top: max(56px, calc(env(safe-area-inset-top) + 48px));
+    width: min(260px, 72vw);
+    padding: 4px 8px 5px;
+  }
+  .gap-row { font-size: clamp(11px, 3vw, 13px); }
+  .gap-meter { height: 12px; margin: 3px 0; }
+
+  /* Bottom pedals + compact tach above/near them — leave mid screen for cars */
+  .hud-bottom {
+    height: clamp(120px, 22vh, 160px);
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    align-items: flex-end;
+  }
+  .tach-cluster {
+    position: absolute;
+    left: 50%; transform: translateX(-50%);
+    bottom: max(78px, calc(env(safe-area-inset-bottom) + 70px));
+    margin-bottom: 0;
+    gap: 6px;
+  }
+  .tach {
+    width: min(92px, 24vw); height: min(92px, 24vw);
+    opacity: 0.95;
+  }
+  #gear-label, #speed-label { font-size: clamp(16px, 4.5vw, 22px); }
+  .shift {
+    width: clamp(40px, 11vw, 48px);
+    height: clamp(40px, 11vw, 48px);
+    font-size: clamp(20px, 5vw, 26px);
+  }
+  .pedal {
+    width: clamp(64px, 18vw, 84px);
+    height: clamp(68px, 12vh, 88px);
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .pedal-brake { left: max(14px, env(safe-area-inset-left)); }
+  .pedal-gas {
+    left: auto;
+    right: max(14px, env(safe-area-inset-right));
+  }
+  .pedal-lab { font-size: clamp(12px, 3.2vw, 15px); }
+
+  .nitro {
+    left: max(12px, env(safe-area-inset-left));
+    bottom: max(110px, calc(env(safe-area-inset-bottom) + 100px));
+    width: 56px; height: 56px;
+  }
+  .nitro .nitro-icon { width: 22px; height: 22px; }
+
+  .banner { top: 22%; }
+  .banner .go { font-size: clamp(20px, 5.5vw, 32px); }
+  .banner .sub { font-size: clamp(13px, 3.5vw, 18px); margin-top: 8px; }
+
+  .fps-counter {
+    top: max(58px, calc(env(safe-area-inset-top) + 50px));
+    left: max(10px, env(safe-area-inset-left));
+    transform: none;
+  }
+}
+
+/* Tall phones (S24 Ultra ~19.5:9 portrait) — tighter chrome */
+@media (orientation: portrait) and (max-aspect-ratio: 10/19) {
+  .hud-bottom { height: clamp(128px, 20vh, 168px); }
+  .tach { width: min(88px, 22vw); height: min(88px, 22vw); }
+  .race-gap { width: min(240px, 68vw); }
+}
+
+/* Landscape still supported (no gate) — compact bottom HUD */
 @media (orientation: landscape) {
   .hud-bottom { height: clamp(68px, 15vh, 96px); }
   .tach { width: min(104px, 12vw, 20vh); height: min(104px, 12vw, 20vh); }
@@ -561,7 +645,6 @@ button.ghost.slim, button.slim {
   .timer { font-size: clamp(18px, 3.5vw, 28px); }
 }
 
-/* Extra-wide phones (S24 Ultra class ~19:9+) */
 @media (orientation: landscape) and (min-aspect-ratio: 18/9) {
   .hud-bottom { height: clamp(64px, 14vh, 88px); }
   .tach { width: min(96px, 11vw, 18vh); height: min(96px, 11vw, 18vh); }
@@ -571,38 +654,30 @@ button.ghost.slim, button.slim {
   }
 }
 
-/* Portrait: allow garage menus, but hard-gate race HUD via rotate overlay */
-@media (orientation: portrait) {
-  .upgrade-panel { max-height: 22vh; }
-  .car-grid { max-height: 22vh; }
-  #hud { opacity: 0.15; pointer-events: none; }
-}
-
-/* Rotate-device gate (shown by JS when portrait; desktop always skipped in JS) */
+/* Soft portrait tip (dismissible) — not a hard lock */
 .rotate-gate {
   position: fixed; inset: 0; z-index: 9999;
-  display: flex; align-items: center; justify-content: center;
-  background: #050508;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(5,5,8,0.55);
   padding: 20px;
+  padding-bottom: max(28px, env(safe-area-inset-bottom));
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  pointer-events: auto;
 }
+.rotate-gate.soft-prompt { align-items: flex-end; }
 .rotate-gate.hidden { display: none !important; }
 .rotate-card {
   width: min(340px, 92vw);
   text-align: center;
-  padding: 22px 18px;
+  padding: 18px 16px 14px;
 }
 .rotate-card p {
-  color: #c8d0e0; font-size: 14px; line-height: 1.45; margin-top: 12px;
+  color: #c8d0e0; font-size: 13px; line-height: 1.45; margin: 10px 0 12px;
 }
+.rotate-card .primary { margin-top: 4px; }
 .rotate-icon {
-  font-size: 48px; margin-bottom: 10px;
-  animation: rotate-nudge 1.4s ease-in-out infinite;
+  font-size: 40px; margin-bottom: 6px;
   display: inline-block;
-}
-@keyframes rotate-nudge {
-  0%, 100% { transform: rotate(-12deg); }
-  50% { transform: rotate(78deg); }
 }

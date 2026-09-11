@@ -2102,48 +2102,56 @@
     });
   }
 
-  // —— Landscape preference / portrait rotate gate ——
-  // Desktop always allowed; gate only on phone/tablet in portrait.
+  // —— Portrait-first orientation (S24 Ultra vertical) ——
   const rotateGate = document.getElementById('rotate-gate');
+  const rotateDismiss = document.getElementById('btn-rotate-dismiss');
+  let landscapeHintDismissed = false;
+  try { landscapeHintDismissed = localStorage.getItem('ssr-portrait-hint') === '1'; } catch (_) {}
   function isDesktopLike() {
     const coarse = window.matchMedia('(pointer: coarse)').matches;
     const noHover = window.matchMedia('(hover: none)').matches;
     const touchPoints = (navigator.maxTouchPoints || 0) > 0;
-    // Fine pointer + hover = typical desktop/laptop; skip gate even if window is tall.
     if (!coarse && !noHover && !touchPoints) return true;
     if (!coarse && window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 900) return true;
     return false;
   }
   function isPortrait() {
-    if (isDesktopLike()) return false;
-    return window.matchMedia('(orientation: portrait)').matches || window.innerHeight > window.innerWidth * 1.05;
+    return window.matchMedia('(orientation: portrait)').matches || window.innerHeight >= window.innerWidth;
+  }
+  function lockPortraitSoft() {
+    if (isDesktopLike()) return;
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('portrait').catch(() => {});
+    }
   }
   function syncOrientationGate() {
     const portrait = isPortrait();
     document.documentElement.classList.toggle('portrait', portrait);
     document.documentElement.classList.toggle('landscape', !portrait);
-    if (rotateGate) rotateGate.classList.toggle('hidden', !portrait);
-    // Soft-lock when possible (installed PWA / supported browsers)
-    if (!portrait && !isDesktopLike() && screen.orientation && screen.orientation.lock) {
-      screen.orientation.lock('landscape').catch(() => {});
-    }
+    // Soft hint only when phone is sideways; never block portrait play
+    const showHint = !isDesktopLike() && !portrait && !landscapeHintDismissed;
+    if (rotateGate) rotateGate.classList.toggle('hidden', !showHint);
+    if (portrait) lockPortraitSoft();
+  }
+  if (rotateDismiss) {
+    rotateDismiss.addEventListener('click', () => {
+      landscapeHintDismissed = true;
+      try { localStorage.setItem('ssr-portrait-hint', '1'); } catch (_) {}
+      if (rotateGate) rotateGate.classList.add('hidden');
+    });
   }
   syncOrientationGate();
+  lockPortraitSoft();
   window.addEventListener('orientationchange', () => setTimeout(syncOrientationGate, 80));
   window.addEventListener('resize', syncOrientationGate);
   if (window.matchMedia) {
     try {
       window.matchMedia('(orientation: portrait)').addEventListener('change', syncOrientationGate);
     } catch (_) {
-      // older Safari
       window.matchMedia('(orientation: portrait)').addListener(syncOrientationGate);
     }
   }
-  document.addEventListener('pointerdown', () => {
-    if (!isDesktopLike() && screen.orientation && screen.orientation.lock) {
-      screen.orientation.lock('landscape').catch(() => {});
-    }
-  }, { passive: true });
+  document.addEventListener('pointerdown', () => { lockPortraitSoft(); }, { passive: true });
 
   // —— Boot ——
   if (window.SSRAudio) SSRAudio.setSettings(settings);
