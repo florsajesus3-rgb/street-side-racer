@@ -193,8 +193,9 @@
   function strokeBodyEdge(ctx, pathFn, opts) {
     ctx.save();
     pathFn();
-    ctx.strokeStyle = detail(opts).low ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.65)';
-    ctx.lineWidth = detail(opts).low ? 1.2 : 1.6;
+    ctx.strokeStyle = detail(opts).low ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.72)';
+    ctx.lineWidth = detail(opts).low ? 1.4 : 1.85;
+    ctx.lineJoin = 'round';
     ctx.stroke();
     ctx.restore();
   }
@@ -288,24 +289,39 @@
         ctx.fill();
       }
     } else if (style === 'deepdish') {
-      ctx.strokeStyle = lit;
-      ctx.lineWidth = 2;
+      ctx.fillStyle = '#1a1c20';
       ctx.beginPath();
-      ctx.arc(0, 0, 10, 0, Math.PI * 2);
+      ctx.arc(0, 0, 11.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = lit;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.arc(0, 0, 11.2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = '#4a5058';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(0, 0, 9.2, 0, Math.PI * 2);
       ctx.stroke();
       ctx.fillStyle = '#3a4048';
       ctx.beginPath();
-      ctx.arc(0, 0, 7.5, 0, Math.PI * 2);
+      ctx.arc(0, 0, 6.8, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = lit;
-      ctx.lineWidth = 1.4;
+      ctx.lineWidth = 1.5;
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
         ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * 3, Math.sin(a) * 3);
-        ctx.lineTo(Math.cos(a) * 7, Math.sin(a) * 7);
+        ctx.moveTo(Math.cos(a) * 2.4, Math.sin(a) * 2.4);
+        ctx.lineTo(Math.cos(a) * 6.4, Math.sin(a) * 6.4);
         ctx.stroke();
       }
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(-1.5, -2, 9.5, -1.1, 0.15);
+      ctx.stroke();
+    }
     } else if (style === 'turbine') {
       ctx.fillStyle = lit;
       for (let i = 0; i < 7; i++) {
@@ -441,187 +457,256 @@
     ctx.fill();
   }
 
-  /** Dodge Charger 2015–23 — long sedan, crosseyed lights, curved muscle. */
+  /** Dodge Charger 2015–23 LD — Apex-inspired hi-fi side view (original). */
   function bodyCharger(ctx, car, opts) {
     const color = car.color;
     const d = detail(opts);
-    const RA = -58, FA = 62;
+    // Long hood / short deck sedan; nose +X. Axles match muscular stance.
+    const RA = -60, FA = 64;
     const bodyPath = function () {
       ctx.beginPath();
-      ctx.moveTo(-96, 2);
-      ctx.bezierCurveTo(-104, 2, -104, -8, -103, -16);
-      ctx.bezierCurveTo(-102, -28, -96, -34, -78, -36);
-      ctx.bezierCurveTo(-55, -38, -30, -38, -20, -40);
-      ctx.bezierCurveTo(-14, -54, -6, -62, 12, -63);
-      ctx.bezierCurveTo(32, -64, 48, -60, 56, -52);
-      ctx.bezierCurveTo(64, -44, 72, -38, 82, -36);
-      ctx.bezierCurveTo(94, -34, 102, -30, 104, -20);
-      ctx.bezierCurveTo(106, -10, 104, -2, 100, 2);
-      // front wheel arch
-      ctx.lineTo(FA + 22, 2);
-      ctx.bezierCurveTo(FA + 20, -8, FA + 14, -18, FA, -18);
-      ctx.bezierCurveTo(FA - 14, -18, FA - 20, -8, FA - 22, 2);
-      ctx.lineTo(RA + 22, 2);
-      // rear wheel arch
-      ctx.bezierCurveTo(RA + 20, -8, RA + 14, -18, RA, -18);
-      ctx.bezierCurveTo(RA - 14, -18, RA - 20, -8, RA - 22, 2);
+      // rear bumper → short deck (muscular haunch)
+      ctx.moveTo(-108, 3);
+      ctx.bezierCurveTo(-114, 3, -116, -6, -114, -16);
+      ctx.bezierCurveTo(-112, -28, -106, -36, -96, -40);
+      ctx.bezierCurveTo(-86, -44, -74, -46, -62, -44);
+      // C-pillar rise (short deck into greenhouse)
+      ctx.bezierCurveTo(-48, -46, -36, -52, -28, -62);
+      ctx.bezierCurveTo(-22, -68, -8, -72, 10, -72);
+      // long roof → A-pillar
+      ctx.bezierCurveTo(28, -72.5, 46, -70, 58, -62);
+      ctx.bezierCurveTo(66, -56, 72, -48, 78, -42);
+      // long hood to aggressive nose
+      ctx.bezierCurveTo(88, -40, 100, -38, 110, -32);
+      ctx.bezierCurveTo(118, -28, 122, -20, 122, -10);
+      ctx.bezierCurveTo(122, -2, 118, 3, 112, 3);
+      // front wheel arch (deep)
+      ctx.lineTo(FA + 24, 3);
+      ctx.bezierCurveTo(FA + 22, -10, FA + 14, -22, FA, -22);
+      ctx.bezierCurveTo(FA - 14, -22, FA - 22, -10, FA - 24, 3);
+      ctx.lineTo(RA + 24, 3);
+      // rear wheel arch + haunch
+      ctx.bezierCurveTo(RA + 22, -10, RA + 14, -22, RA, -22);
+      ctx.bezierCurveTo(RA - 14, -22, RA - 22, -10, RA - 24, 3);
       ctx.closePath();
     };
-    fillBody(ctx, bodyPath, color, opts);
+    // Bold cel outline + rich paint
+    ctx.fillStyle = paintGradient(ctx, -74, 6, color, d.q);
+    bodyPath();
+    ctx.fill();
+    specularStripe(ctx, bodyPath, d.q);
+    ctx.save();
+    bodyPath();
+    ctx.strokeStyle = 'rgba(0,0,0,0.78)';
+    ctx.lineWidth = d.low ? 1.8 : 2.35;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    // Muscular rear quarter shade
     if (d.med) {
-      ctx.fillStyle = shadeColor(color, -18);
-      ctx.globalAlpha = 0.32;
+      ctx.fillStyle = shadeColor(color, -28);
+      ctx.globalAlpha = 0.38;
       ctx.beginPath();
-      ctx.moveTo(58, -36);
-      ctx.bezierCurveTo(78, -44, 98, -34, 100, -22);
-      ctx.lineTo(100, -10);
-      ctx.lineTo(58, -12);
+      ctx.moveTo(-110, -18);
+      ctx.bezierCurveTo(-100, -40, -78, -48, -58, -42);
+      ctx.lineTo(-58, -12);
+      ctx.lineTo(-108, -8);
       ctx.closePath();
       ctx.fill();
       ctx.globalAlpha = 1;
-    }
-    // rocker strip (curved)
-    ctx.fillStyle = shadeColor(color, -38);
-    ctx.beginPath();
-    ctx.moveTo(RA + 22, 0);
-    ctx.lineTo(FA - 22, 0);
-    ctx.quadraticCurveTo(FA - 22, 6, FA - 28, 6);
-    ctx.lineTo(RA + 28, 6);
-    ctx.quadraticCurveTo(RA + 22, 6, RA + 22, 0);
-    ctx.closePath();
-    ctx.fill();
-    // greenhouse glass
-    drawGlass(ctx, [-16, -40, -4, -58, 40, -60, 54, -40], opts, 'rgba(25,40,60,0.78)');
-    if (d.med) {
-      // rear side glass
+      // hood plane shade (long hood read)
+      ctx.fillStyle = shadeColor(color, -16);
+      ctx.globalAlpha = 0.28;
       ctx.beginPath();
-      ctx.moveTo(48, -52);
-      ctx.quadraticCurveTo(58, -56, 68, -42);
-      ctx.lineTo(54, -40);
+      ctx.moveTo(62, -40);
+      ctx.bezierCurveTo(86, -48, 112, -36, 116, -18);
+      ctx.lineTo(116, -6);
+      ctx.lineTo(62, -10);
       ctx.closePath();
-      const gg = ctx.createLinearGradient(48, -56, 68, -40);
-      gg.addColorStop(0, 'rgba(20,35,55,0.75)');
-      gg.addColorStop(1, 'rgba(140,180,220,0.35)');
-      ctx.fillStyle = gg;
       ctx.fill();
-      ctx.strokeStyle = 'rgba(10,20,35,0.5)';
-      ctx.lineWidth = 1;
+      ctx.globalAlpha = 1;
+      // shoulder character line
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-96, -34);
+      ctx.bezierCurveTo(-40, -40, 20, -42, 78, -38);
       ctx.stroke();
-      // B/C pillars
-      ctx.fillStyle = 'rgba(8,8,10,0.78)';
+      ctx.strokeStyle = 'rgba(0,0,0,0.22)';
       ctx.beginPath();
-      ctx.moveTo(18, -58); ctx.quadraticCurveTo(22, -58, 24, -40); ctx.lineTo(18, -40);
-      ctx.closePath(); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(38, -58); ctx.quadraticCurveTo(44, -56, 50, -40); ctx.lineTo(42, -40);
-      ctx.closePath(); ctx.fill();
-      // A-pillar / hood scoop hint
-      ctx.fillStyle = shadeColor(color, -8);
-      ctx.beginPath();
-      ctx.moveTo(48, -58);
-      ctx.quadraticCurveTo(62, -54, 72, -38);
-      ctx.lineTo(54, -40);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(-96, -32);
+      ctx.bezierCurveTo(-40, -38, 20, -40, 78, -36);
+      ctx.stroke();
     }
-    panelLine(ctx, -8, -38, -8, -2, opts);
-    panelLine(ctx, 22, -38, 24, -2, opts);
-    panelLine(ctx, 50, -38, 52, -2, opts);
-    panelLine(ctx, -70, -34, -70, -6, opts);
-    doorHandle(ctx, 0, -20, opts);
-    doorHandle(ctx, 32, -20, opts);
-    sideMirror(ctx, -4, -42, opts, color);
-    // crosseyed stacked headlights (signature Charger)
-    ctx.fillStyle = '#0a0a0c';
+
+    // Rocker / side skirt
+    ctx.fillStyle = shadeColor(color, -42);
     ctx.beginPath();
-    ctx.ellipse(100, -26, 5.5, 4.2, 0.15, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(98.5, -16, 6, 4.5, 0.1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fff8e0';
-    ctx.beginPath();
-    ctx.ellipse(100.5, -26.5, 3.2, 2.4, 0.15, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ffe8c0';
-    ctx.beginPath();
-    ctx.ellipse(99, -16.5, 3.6, 2.6, 0.1, 0, Math.PI * 2);
+    ctx.moveTo(RA + 24, 1);
+    ctx.lineTo(FA - 24, 1);
+    ctx.quadraticCurveTo(FA - 24, 8, FA - 32, 8);
+    ctx.lineTo(RA + 32, 8);
+    ctx.quadraticCurveTo(RA + 24, 8, RA + 24, 1);
+    ctx.closePath();
     ctx.fill();
     if (d.high) {
-      ctx.fillStyle = 'rgba(255,240,200,0.4)';
-      ctx.beginPath();
-      ctx.ellipse(108, -22, 10, 7, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fff6d0';
-      ctx.beginPath(); ctx.ellipse(100.5, -26.5, 1.8, 1.3, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(99, -16.5, 2, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(RA + 28, 2, FA - RA - 56, 2);
     }
-    // decklid lip spoiler
+
+    // Clear 4-door greenhouse (rear / mid / front)
+    function pane(pts, tint) {
+      drawGlass(ctx, pts, opts, tint || 'rgba(30,50,75,0.55)');
+    }
+    pane([-26, -44, -18, -64, 2, -68, 8, -44], 'rgba(20,38,58,0.78)');
+    pane([10, -44, 14, -68, 34, -69, 38, -44], 'rgba(28,48,72,0.62)');
+    pane([42, -44, 46, -68, 68, -60, 74, -42], 'rgba(40,70,100,0.5)');
     if (d.med) {
-      ctx.fillStyle = shadeColor(color, -22);
+      ctx.strokeStyle = 'rgba(210,220,235,0.45)';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(-102, -34);
-      ctx.quadraticCurveTo(-94, -38, -82, -36);
-      ctx.quadraticCurveTo(-84, -32, -100, -30);
+      ctx.moveTo(-24, -43);
+      ctx.lineTo(74, -41);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(6,6,8,0.88)';
+      ctx.beginPath();
+      ctx.moveTo(4, -66); ctx.lineTo(10, -66); ctx.lineTo(12, -44); ctx.lineTo(6, -44);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(36, -67); ctx.lineTo(42, -67); ctx.lineTo(44, -44); ctx.lineTo(38, -44);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-28, -60); ctx.quadraticCurveTo(-20, -68, -14, -66);
+      ctx.lineTo(-10, -44); ctx.lineTo(-26, -44);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = shadeColor(color, -6);
+      ctx.beginPath();
+      ctx.moveTo(66, -62);
+      ctx.quadraticCurveTo(80, -54, 88, -40);
+      ctx.lineTo(74, -40);
+      ctx.lineTo(68, -56);
       ctx.closePath();
       ctx.fill();
-      if ((car.bodyLevel || 0) > 0) {
-        ctx.fillStyle = shadeColor(color, -30);
-        ctx.beginPath();
-        ctx.moveTo(-104, -40);
-        ctx.quadraticCurveTo(-92, -46, -78, -42);
-        ctx.lineTo(-80, -36);
-        ctx.quadraticCurveTo(-92, -38, -102, -34);
-        ctx.closePath();
-        ctx.fill();
+      ctx.strokeStyle = 'rgba(220,240,255,0.35)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(16, -64); ctx.lineTo(30, -65);
+      ctx.moveTo(48, -64); ctx.lineTo(60, -58);
+      ctx.stroke();
+    }
+
+    panelLine(ctx, -14, -40, -14, 0, opts);
+    panelLine(ctx, 20, -40, 22, 0, opts);
+    panelLine(ctx, 48, -40, 50, 0, opts);
+    panelLine(ctx, -78, -38, -78, -4, opts);
+    doorHandle(ctx, -4, -22, opts);
+    doorHandle(ctx, 28, -22, opts);
+    sideMirror(ctx, 54, -46, opts, color);
+
+    // Crosseyed dual headlights (LD signature stacked pair)
+    ctx.fillStyle = '#08080a';
+    roundRectPath(ctx, 112, -34, 12, 24, 3.5);
+    ctx.fill();
+    ctx.fillStyle = '#0e1014';
+    ctx.beginPath(); ctx.ellipse(118, -28, 5.2, 4.0, 0.12, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff6d8';
+    ctx.beginPath(); ctx.ellipse(118.5, -28.5, 3.4, 2.6, 0.12, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0e1014';
+    ctx.beginPath(); ctx.ellipse(116.5, -16, 5.6, 4.4, 0.08, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffe8b0';
+    ctx.beginPath(); ctx.ellipse(117, -16.5, 3.8, 2.9, 0.08, 0, Math.PI * 2); ctx.fill();
+    if (d.high) {
+      ctx.fillStyle = 'rgba(255,245,200,0.42)';
+      ctx.beginPath(); ctx.ellipse(128, -22, 12, 9, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.ellipse(119, -29, 1.5, 1.1, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(117.5, -17, 1.7, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,250,230,0.55)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(114, -34); ctx.lineTo(114, -10);
+      ctx.stroke();
+    }
+
+    // Short decklid lip
+    ctx.fillStyle = shadeColor(color, -24);
+    ctx.beginPath();
+    ctx.moveTo(-114, -36);
+    ctx.quadraticCurveTo(-102, -44, -86, -42);
+    ctx.quadraticCurveTo(-90, -36, -110, -32);
+    ctx.closePath();
+    ctx.fill();
+    if ((car.bodyLevel || 0) > 0) {
+      ctx.fillStyle = shadeColor(color, -34);
+      ctx.beginPath();
+      ctx.moveTo(-116, -42);
+      ctx.quadraticCurveTo(-100, -52, -82, -48);
+      ctx.lineTo(-84, -40);
+      ctx.quadraticCurveTo(-100, -42, -114, -36);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Vertical stacked taillights
+    ctx.fillStyle = '#140308';
+    roundRectPath(ctx, -116, -34, 12, 22, 3);
+    ctx.fill();
+    ctx.fillStyle = '#ff1428';
+    ctx.beginPath(); ctx.ellipse(-110, -28, 3.6, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff2a3a';
+    ctx.beginPath(); ctx.ellipse(-110, -20, 3.8, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+    if (d.med) {
+      ctx.fillStyle = 'rgba(255,50,60,0.5)';
+      ctx.fillRect(-111, -28, 3.5, 12);
+      if (d.high) {
+        ctx.fillStyle = 'rgba(255,80,90,0.35)';
+        ctx.beginPath(); ctx.ellipse(-122, -22, 8, 10, 0, 0, Math.PI * 2); ctx.fill();
       }
     }
-    // taillights
-    ctx.fillStyle = '#1a0508';
-    roundRectPath(ctx, -102, -30, 10, 18, 3);
-    ctx.fill();
-    ctx.fillStyle = '#ff1a2a';
-    ctx.beginPath();
-    ctx.ellipse(-97, -24, 3.2, 2.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ff3344';
-    ctx.beginPath();
-    ctx.ellipse(-97, -16, 3.4, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    if (d.med) {
-      ctx.fillStyle = 'rgba(255,40,50,0.45)';
-      ctx.fillRect(-98, -24, 3, 10);
-    }
-    exhaustTips(ctx, car.trickyLaunch ? [-94, -84] : [-90], 0, opts);
+
+    exhaustTips(ctx, car.trickyLaunch ? [-104, -92] : [-100, -88], 1, opts);
+
     if (car.accent) {
       ctx.fillStyle = car.accent;
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.9;
       ctx.beginPath();
-      ctx.moveTo(-55, -24);
-      ctx.quadraticCurveTo(-30, -26, -8, -24);
-      ctx.lineTo(-8, -21);
-      ctx.quadraticCurveTo(-30, -23, -55, -21);
+      ctx.moveTo(-62, -26);
+      ctx.quadraticCurveTo(-30, -30, 4, -26);
+      ctx.lineTo(4, -22.5);
+      ctx.quadraticCurveTo(-30, -26, -62, -22.5);
       ctx.closePath();
       ctx.fill();
       ctx.globalAlpha = 1;
     }
+
     if (d.med) {
-      ctx.fillStyle = shadeColor(color, -12);
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.lineWidth = 1;
+      roundRectPath(ctx, -70, -30, 8, 10, 1.5);
+      ctx.stroke();
+      ctx.fillStyle = shadeColor(color, -10);
       ctx.beginPath();
-      ctx.moveTo(-68, -34);
-      ctx.quadraticCurveTo(-40, -40, -20, -36);
-      ctx.lineTo(-20, -34);
+      ctx.moveTo(78, -36);
+      ctx.quadraticCurveTo(92, -40, 102, -34);
+      ctx.lineTo(100, -30);
+      ctx.quadraticCurveTo(90, -34, 78, -32);
       ctx.closePath();
       ctx.fill();
     }
-    // front splitter
-    ctx.fillStyle = '#111';
+
+    // Front splitter / chin
+    ctx.fillStyle = '#0c0c0e';
     ctx.beginPath();
-    ctx.moveTo(88, 0);
-    ctx.quadraticCurveTo(104, 0, 104, 4);
-    ctx.lineTo(86, 4);
+    ctx.moveTo(96, 1);
+    ctx.quadraticCurveTo(120, 1, 120, 6);
+    ctx.lineTo(94, 6);
     ctx.closePath();
     ctx.fill();
+    if (d.high) {
+      ctx.fillStyle = '#1a1a1e';
+      ctx.fillRect(100, -6, 16, 4);
+    }
   }
 
   /** Mustang — fastback coupe, long hood, short deck. */
@@ -649,7 +734,7 @@
     };
     fillBody(ctx, bodyPath, color, opts);
     rocker(ctx, color, -88, 176);
-    drawGlass(ctx, [-4, -42, 8, -60, 42, -62, 66, -40], opts, 'rgba(30,50,75,0.72)');
+    drawGlass(ctx, [-6, -42, 6, -62, 44, -64, 68, -40], opts, 'rgba(30,50,75,0.68)');
     if (d.med) {
       ctx.beginPath();
       ctx.moveTo(44, -58);
@@ -796,7 +881,7 @@
     };
     fillBody(ctx, bodyPath, color, opts);
     rocker(ctx, color, -88, 178);
-    drawGlass(ctx, [6, -40, 18, -62, 46, -64, 62, -42], opts, 'rgba(15,25,40,0.84)');
+    drawGlass(ctx, [4, -40, 16, -64, 48, -66, 64, -42], opts, 'rgba(15,25,40,0.8)');
     if (d.med) {
       ctx.fillStyle = shadeColor(color, -5);
       ctx.beginPath();
@@ -858,7 +943,7 @@
     };
     fillBody(ctx, bodyPath, color, opts);
     rocker(ctx, color, -90, 180);
-    drawGlass(ctx, [-8, -40, 4, -56, 36, -58, 52, -40], opts, 'rgba(25,40,60,0.74)');
+    drawGlass(ctx, [-10, -40, 2, -58, 38, -60, 54, -40], opts, 'rgba(25,40,60,0.7)');
     if (d.med) {
       drawGlass(ctx, [40, -54, 54, -52, 68, -40, 52, -38], opts, 'rgba(20,35,55,0.7)');
       ctx.fillStyle = 'rgba(8,8,10,0.7)';
@@ -1045,7 +1130,7 @@
       const rimOpts = {
         quality: opts.quality,
         reflectionPass: false,
-        rimStyle: car.rimStyle || RIM_STYLES[(car.rimIndex || 0) % RIM_STYLES.length],
+        rimStyle: car.rimStyle || ((id === 'charger') ? 'deepdish' : RIM_STYLES[(car.rimIndex || 0) % RIM_STYLES.length]),
         caliperColor: car.accent || '#c41230',
       };
       const spinBoost = (car.wheelspin || 0) > 0.3 ? (car.wheelRot || 0) * 1.8 : (car.wheelRot || 0);
@@ -1536,7 +1621,9 @@
 
   function drawAt(ctx, car, screenX, y, scale, opts) {
     opts = opts || {};
-    const mode = (opts.mode || opts.drawMode || 'pixel');
+    const id = (car && (car.id || car.carId)) || '';
+    let mode = (opts.mode || opts.drawMode || 'pixel');
+    if (id === 'charger') mode = 'vector';
     if (mode === 'pixel') {
       drawPixelAt(ctx, car, screenX, y, scale, opts);
       return;

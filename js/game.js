@@ -1302,13 +1302,14 @@
 
   function drawCarBody(car, screenX, y, scale, reflectionPass) {
     const quality = (settings && settings.preset) || 'High';
+    const carId = car.id || car.carId || '';
     const opts = {
       quality,
       reflectionPass: !!reflectionPass,
       time: performance.now(),
       showLabel: !reflectionPass,
-      // High/Ultra: vector silhouettes; Low/Med: pixel sprites (both original art)
-      mode: (quality === 'Low') ? 'pixel' : 'vector',
+      // Charger always vector (pixel reads boxy); others: Low=pixel else vector
+      mode: (carId === 'charger' || quality !== 'Low') ? 'vector' : 'pixel',
     };
     if (window.SSRCarsDraw) {
       SSRCarsDraw.drawAt(ctx, car, screenX, y, scale, opts);
@@ -1765,7 +1766,7 @@
         reflectionPass: false,
         time: performance.now(),
         showLabel: false,
-        mode: (q === 'Low') ? 'pixel' : 'vector',
+        mode: (car.id === 'charger' || q !== 'Low') ? 'vector' : 'pixel',
       });
     }
     if (a.trickyLaunch) {
@@ -1880,7 +1881,7 @@
           id: car.id, color: stats.color, accent: stats.accent,
           bodyLevel: stats.bodyLevel, rimStyle: stats.rimStyle, underglow: stats.underglow,
           nitroActive: false, nitro: 0, wheelRot: 0.4, scaleX: 1,
-        }, 84, 58, 1.15, { mode: (q === 'Low') ? 'pixel' : 'vector', showLabel: false, quality: q });
+        }, 84, 58, 1.15, { mode: (car.id === 'charger' || q !== 'Low') ? 'vector' : 'pixel', showLabel: false, quality: q });
       }
       tile.addEventListener('click', () => {
         progress = SSRCars.selectCar(car.id);
