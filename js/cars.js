@@ -431,6 +431,51 @@
     return pick;
   }
 
+
+  /** Class letter E–S + 3-digit rating from applied feel (original PCR-like tags). */
+  function classRating(stats) {
+    const power = (stats && stats.power) || 1;
+    const hp = (stats && stats.hp) || 300;
+    const grip = (stats && stats.launchGrip) || 1;
+    // Original rating: factory HP + feel power + grip (not ripped PCR tables)
+    const score = Math.round(clamp(hp * 0.35 + power * 90 + grip * 25, 90, 999));
+    let letter = 'E';
+    if (score >= 380) letter = 'S';
+    else if (score >= 320) letter = 'A';
+    else if (score >= 270) letter = 'B';
+    else if (score >= 220) letter = 'C';
+    else if (score >= 170) letter = 'D';
+    else letter = 'E';
+    return { letter, rating: score, label: letter + String(score).padStart(3, '0') };
+  }
+
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  /** Dyno curves vs RPM for selected engine + upgrades (original math, not ripped). */
+  function dynoCurves(carId, progress) {
+    const s = appliedStats(carId, progress);
+    const eng = getEngine(carId, (progress.engines || {})[carId] || s.defaultEngine);
+    const redline = s.redline || 7000;
+    const peakHp = (eng && eng.hp) || 350;
+    const peakTq = (eng && eng.tq) || 350;
+    const built = ((progress.upgrades[carId] || {}).engine || 0);
+    const hpMul = 1 + built * 0.055;
+    const tqMul = 1 + built * 0.045;
+    const points = [];
+    const steps = 48;
+    for (let i = 0; i <= steps; i++) {
+      const rpm = Math.round((redline * i) / steps);
+      const n = rpm / redline;
+      // torque hump early-mid; power rises later
+      const tShape = Math.sin(Math.PI * Math.min(1, Math.max(0, (n - 0.08) / 0.72))) * 0.85 + 0.15 * Math.max(0, 1 - Math.abs(n - 0.45) * 2);
+      const tq = Math.max(0, peakTq * tqMul * tShape * (0.55 + 0.45 * Math.min(1, n / 0.35)));
+      const hp = Math.max(0, (tq * rpm) / 5252);
+      const hpCap = peakHp * hpMul * (0.2 + 0.8 * Math.pow(Math.min(1, n / 0.85), 1.15));
+      points.push({ rpm, hp: Math.min(hp * 1.05, hpCap * 1.15), tq });
+    }
+    return { points, redline, peakHp: peakHp * hpMul, peakTq: peakTq * tqMul, classInfo: classRating(s) };
+  }
+
   global.SSRCars = {
     CARS,
     ENGINES,
@@ -438,6 +483,7 @@
     COSMETIC_COLORS,
     RIM_STYLES,
     UNDERGLOW_OPTS,
+    CLASSES: ['E', 'D', 'C', 'B', 'A', 'S'],
     load,
     save,
     getCar,
@@ -453,5 +499,7 @@
     selectCar,
     rewardRace,
     pickRival,
+    classRating,
+    dynoCurves,
   };
 })(window);

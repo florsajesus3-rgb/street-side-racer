@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#0a0a12" />
+  <meta name="theme-color" content="#0a0a0c" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -18,7 +18,7 @@
     <canvas id="game" width="1280" height="720"></canvas>
     <div id="fps-counter" class="fps-counter hidden">-- FPS</div>
 
-    <!-- HUD overlay -->
+    <!-- HUD overlay — PCR/Apex-like: bottom pedals, tach + shifts, nitro left -->
     <div id="hud" class="hidden">
       <button id="btn-pause" class="hud-btn pause" aria-label="Pause">❚❚</button>
       <div id="timer" class="timer">0.00</div>
@@ -29,40 +29,44 @@
         <div class="gap-row rival"><span class="gap-tag">RIVAL</span><span id="gap-rival-et">—.——</span><span id="gap-rival-mph">0</span></div>
       </div>
 
-      <button id="btn-throttle" class="pedal pedal-gas" aria-label="Throttle">GAS</button>
-      <button id="btn-brake" class="pedal pedal-brake" aria-label="Brake">BRAKE</button>
-
       <button id="btn-nitro" class="nitro" aria-label="Nitrous">
         <svg viewBox="0 0 64 64" class="nitro-icon" aria-hidden="true">
           <ellipse cx="32" cy="38" rx="14" ry="18" fill="none" stroke="currentColor" stroke-width="3"/>
           <rect x="26" y="12" width="12" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="3"/>
           <path d="M22 28h20" stroke="currentColor" stroke-width="3"/>
         </svg>
-        <span>NITROUS</span>
+        <span>NOS</span>
         <svg class="nitro-ring" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="44" pathLength="100" />
         </svg>
       </button>
 
-      <div id="tach" class="tach">
-        <canvas id="tach-canvas" width="280" height="280"></canvas>
-        <div class="tach-readout">
-          <div id="gear-label">1<span>ST</span></div>
-          <div id="speed-label">0<span>MPH</span></div>
+      <!-- Bottom control bar -->
+      <div class="hud-bottom">
+        <button id="btn-brake" class="pedal pedal-brake" aria-label="Brake"><span class="pedal-grid"></span><span class="pedal-lab">BRAKE</span></button>
+        <button id="btn-throttle" class="pedal pedal-gas" aria-label="Throttle"><span class="pedal-grid"></span><span class="pedal-lab">GAS</span></button>
+
+        <div class="tach-cluster">
+          <button id="btn-down" class="shift shift-minus" aria-label="Downshift">−</button>
+          <div id="tach" class="tach">
+            <canvas id="tach-canvas" width="280" height="280"></canvas>
+            <div class="tach-readout">
+              <div id="gear-label">1<span>ST</span></div>
+              <div id="speed-label">0<span>MPH</span></div>
+            </div>
+          </div>
+          <button id="btn-up" class="shift shift-plus" aria-label="Upshift">+</button>
         </div>
       </div>
-
-      <button id="btn-down" class="shift shift-minus" aria-label="Downshift">−</button>
-      <button id="btn-up" class="shift shift-plus" aria-label="Upshift">+</button>
 
       <div id="banner" class="banner"></div>
     </div>
 
     <!-- Main menu -->
     <div id="menu" class="overlay">
-      <div class="menu-card">
-        <h1>STREET SIDE<br/><span>RACER</span></h1>
-        <p class="tagline">Free · 1v1 side-by-side drag · Earn cash to upgrade</p>
+      <div class="menu-card pixel-panel">
+        <div class="pixel-banner title-banner">STREET SIDE RACER</div>
+        <p class="tagline">Free · Dual-lane drag · Pixel garage · No IAP</p>
         <div class="cash-pill" id="menu-cash">$0</div>
         <button id="btn-garage" class="primary">GARAGE</button>
         <button id="btn-settings" class="ghost">SETTINGS</button>
@@ -73,8 +77,8 @@
 
     <!-- Settings -->
     <div id="settings" class="overlay hidden">
-      <div class="menu-card settings-card">
-        <h2>SETTINGS</h2>
+      <div class="menu-card settings-card pixel-panel">
+        <div class="pixel-banner">SETTINGS</div>
         <p class="tagline">100% free · Graphics &amp; audio · Persists on this device</p>
 
         <div class="settings-section">
@@ -119,37 +123,57 @@
       </div>
     </div>
 
-    <!-- Garage -->
+    <!-- Garage — car grid + class filter + dyno -->
     <div id="garage" class="overlay hidden">
       <div class="garage-shell">
         <header class="garage-top">
           <button id="btn-garage-back" class="ghost slim">← MENU</button>
-          <h2>GARAGE</h2>
+          <div class="pixel-banner garage-banner">SHOW OFF YOUR GARAGE</div>
           <div class="cash-pill" id="garage-cash">$0</div>
         </header>
 
-        <div class="garage-preview">
-          <canvas id="garage-canvas" width="640" height="220"></canvas>
-          <div class="car-nav">
-            <button id="btn-car-prev" class="nav-arrow" aria-label="Previous car">‹</button>
-            <div class="car-meta">
-              <div id="garage-car-name">Dodge Charger</div>
-              <div id="garage-car-stats" class="car-stats-line"></div>
+        <div class="garage-main">
+          <aside class="class-filter" id="class-filter" aria-label="Class filter">
+            <button type="button" class="class-chip active" data-class="ALL">★</button>
+            <button type="button" class="class-chip" data-class="E">E</button>
+            <button type="button" class="class-chip" data-class="D">D</button>
+            <button type="button" class="class-chip" data-class="C">C</button>
+            <button type="button" class="class-chip" data-class="B">B</button>
+            <button type="button" class="class-chip" data-class="A">A</button>
+            <button type="button" class="class-chip" data-class="S">S</button>
+          </aside>
+
+          <div class="garage-center">
+            <div class="car-grid" id="car-grid"></div>
+
+            <div class="garage-detail">
+              <div class="garage-preview">
+                <canvas id="garage-canvas" width="640" height="220"></canvas>
+                <div class="car-meta">
+                  <div id="garage-car-name">Dodge Charger</div>
+                  <div id="garage-car-stats" class="car-stats-line"></div>
+                  <div id="garage-class-tag" class="class-tag"><span class="cls">D</span><span class="rtg">200</span></div>
+                </div>
+              </div>
+
+              <div class="dyno-panel pixel-panel">
+                <div class="pixel-banner dyno-banner">PERFECT YOUR TUNE</div>
+                <canvas id="dyno-canvas" width="520" height="200"></canvas>
+                <div class="dyno-legend"><span class="lg-power">POWER</span><span class="lg-torque">TORQUE</span></div>
+              </div>
             </div>
-            <button id="btn-car-next" class="nav-arrow" aria-label="Next car">›</button>
+
+            <div class="garage-tabs">
+              <button class="tab active" data-tab="eng">ENGINE</button>
+              <button class="tab" data-tab="perf">PERFORMANCE</button>
+              <button class="tab" data-tab="cos">COSMETICS</button>
+            </div>
+
+            <div id="panel-eng" class="upgrade-panel"></div>
+            <div id="panel-perf" class="upgrade-panel hidden"></div>
+            <div id="panel-cos" class="upgrade-panel hidden"></div>
           </div>
-          <div id="car-dots" class="car-dots"></div>
         </div>
-
-        <div class="garage-tabs">
-          <button class="tab active" data-tab="eng">ENGINE</button>
-          <button class="tab" data-tab="perf">PERFORMANCE</button>
-          <button class="tab" data-tab="cos">COSMETICS</button>
-        </div>
-
-        <div id="panel-eng" class="upgrade-panel"></div>
-        <div id="panel-perf" class="upgrade-panel hidden"></div>
-        <div id="panel-cos" class="upgrade-panel hidden"></div>
 
         <footer class="garage-foot">
           <button id="btn-garage-race" class="primary">START RACE</button>
@@ -159,16 +183,17 @@
 
     <!-- How to -->
     <div id="howto" class="overlay hidden">
-      <div class="menu-card">
-        <h2>HOW TO PLAY</h2>
+      <div class="menu-card pixel-panel">
+        <div class="pixel-banner">HOW TO PLAY</div>
         <ul class="howto-list">
-          <li>Open <b>GARAGE</b> — pick a car (Charger is the default ride) — all free</li>
+          <li>Open <b>GARAGE</b> — pick a car (Charger is default) — all free</li>
+          <li>Filter by class <b>E–S</b>, check rating tags, tune on the <b>dyno</b></li>
           <li>Choose a <b>factory engine</b>, then stack earnable performance &amp; cosmetics</li>
           <li><b>1v1 dual-lane</b> — you and the AI race side-by-side for the full ¼-mile</li>
           <li>Watch the Christmas tree — go on <b style="color:#7CFF3A">GREEN</b> (hold <b>BRAKE</b> to stay staged)</li>
-          <li>Hold <b>GAS</b> to throttle · tap <b>+ / −</b> to shift · hold <b>NITROUS</b> for boost</li>
-          <li>Upshift in the <b style="color:#7CFF3A">green</b> tach zone (orange = good) for best ET</li>
-          <li>Too much power vs grip = <b>wheelspin</b> — launch skill matters (Hellcats are mean)</li>
+          <li>Hold <b>GAS</b> · tap <b>+ / −</b> near the tach · hold <b>NOS</b> for boost</li>
+          <li>Upshift in the <b style="color:#7CFF3A">green</b> tach zone for best ET</li>
+          <li>Too much power vs grip = <b>wheelspin</b> — launch skill matters</li>
           <li>Win races to earn cash — no ads, no IAP, ever</li>
         </ul>
         <button id="btn-howto-back" class="primary">GOT IT</button>
@@ -177,8 +202,8 @@
 
     <!-- Pause -->
     <div id="pause" class="overlay hidden">
-      <div class="menu-card">
-        <h2>PAUSED</h2>
+      <div class="menu-card pixel-panel">
+        <div class="pixel-banner">PAUSED</div>
         <button id="btn-resume" class="primary">RESUME</button>
         <button id="btn-pause-settings" class="ghost">SETTINGS</button>
         <button id="btn-quit" class="ghost">QUIT TO MENU</button>
@@ -187,8 +212,9 @@
 
     <!-- Result -->
     <div id="result" class="overlay hidden">
-      <div class="menu-card">
-        <h2 id="result-title">YOU WIN!</h2>
+      <div class="menu-card pixel-panel">
+        <div class="pixel-banner" id="result-banner">RESULT</div>
+        <h2 id="result-title" class="sr-only">YOU WIN!</h2>
         <p id="result-stats" class="stats"></p>
         <p id="result-payout" class="payout"></p>
         <button id="btn-again" class="primary">RACE AGAIN</button>

@@ -893,86 +893,100 @@
 
   // —— Drawing ——
   function drawBackground(cam) {
+    // Pixel drag-strip sky
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#152038');
-    g.addColorStop(0.4, '#3a4e6a');
-    g.addColorStop(0.68, '#6e7f92');
-    g.addColorStop(1, '#2a3038');
+    g.addColorStop(0, '#2a3340');
+    g.addColorStop(0.35, '#5a6a5a');
+    g.addColorStop(0.55, '#6e7a62');
+    g.addColorStop(1, '#2a2e34');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
 
-    // soft sun glow
-    const sg = ctx.createRadialGradient(W * 0.78, H * 0.18, 10, W * 0.78, H * 0.18, H * 0.35);
-    sg.addColorStop(0, 'rgba(255,210,140,0.35)');
-    sg.addColorStop(1, 'rgba(255,210,140,0)');
-    ctx.fillStyle = sg;
-    ctx.fillRect(0, 0, W, H * 0.55);
-
-    const horizon = H * 0.42;
-    const roadTop = H * 0.55;
+    const horizon = H * 0.40;
+    const roadTop = H * 0.52;
     const roadBot = H;
     const density = settings.crowdDensity ? 1 : 0.45;
 
-    drawCityLayer(cam * 0.25, horizon - 20, 0.55, '#1c2438', density);
-    drawCityLayer(cam * 0.45, horizon + 10, 0.75, '#243048', density);
-    drawCityLayer(cam * 0.7, roadTop - 8, 1.0, '#2c3850', density);
+    // distant fence / bleachers (pixel blocks)
+    ctx.fillStyle = '#3a4038';
+    ctx.fillRect(0, horizon - 18, W, 22);
+    ctx.fillStyle = '#2a3028';
+    for (let x = -((cam * 0.2) % 28); x < W; x += 28) {
+      ctx.fillRect(x, horizon - 36, 14, 20);
+    }
+    // tire barrier wall
+    const tireY = roadTop - 14;
+    for (let x = -((cam * 0.85) % 22); x < W + 22; x += 22) {
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(x, tireY, 18, 12);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(x + 4, tireY + 3, 10, 6);
+      ctx.fillStyle = '#111';
+      ctx.fillRect(x + 7, tireY + 5, 4, 2);
+    }
+
+    // green field strip
+    ctx.fillStyle = '#3d5a34';
+    ctx.fillRect(0, horizon + 4, W, roadTop - horizon - 18);
 
     if (settings.crowdDensity) drawCrowd(cam, roadTop);
 
-    // road base
-    ctx.fillStyle = '#2a2e34';
-    ctx.beginPath();
-    ctx.moveTo(0, roadTop);
-    ctx.lineTo(W, roadTop);
-    ctx.lineTo(W, roadBot);
-    ctx.lineTo(0, roadBot);
-    ctx.closePath();
-    ctx.fill();
+    // dual-lane asphalt
+    ctx.fillStyle = '#3a3e44';
+    ctx.fillRect(0, roadTop, W, roadBot - roadTop);
+    ctx.fillStyle = '#32363c';
+    ctx.fillRect(0, roadTop + (roadBot - roadTop) * 0.48, W, (roadBot - roadTop) * 0.52);
 
-    // asphalt sheen / reflection strip
     if (settings.reflections) {
       const rg = ctx.createLinearGradient(0, roadTop, 0, roadBot);
-      rg.addColorStop(0, 'rgba(180,200,230,0.08)');
-      rg.addColorStop(0.35, 'rgba(255,255,255,0.03)');
-      rg.addColorStop(1, 'rgba(0,0,0,0.25)');
+      rg.addColorStop(0, 'rgba(180,200,230,0.06)');
+      rg.addColorStop(1, 'rgba(0,0,0,0.2)');
       ctx.fillStyle = rg;
       ctx.fillRect(0, roadTop, W, roadBot - roadTop);
     }
 
-    ctx.fillStyle = '#32363e';
-    ctx.fillRect(0, roadTop + (roadBot - roadTop) * 0.42, W, (roadBot - roadTop) * 0.58);
-
+    // lane divider
     const laneY = roadTop + (roadBot - roadTop) * 0.38;
-    ctx.strokeStyle = 'rgba(255,220,80,0.75)';
-    ctx.lineWidth = 3;
-    ctx.setLineDash([40, 28]);
-    ctx.lineDashOffset = -cam * 0.9;
-    ctx.beginPath();
-    ctx.moveTo(0, laneY);
-    ctx.lineTo(W, laneY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.fillStyle = '#c45c4a';
-    ctx.fillRect(0, roadTop - 6, W, 6);
     ctx.fillStyle = '#e8e8e8';
-    for (let i = -((cam * 0.9) % 60); i < W; i += 60) {
-      ctx.fillRect(i, roadTop - 6, 30, 6);
+    for (let i = -((cam * 0.9) % 48); i < W; i += 48) {
+      ctx.fillRect(i, laneY - 1, 26, 3);
+    }
+
+    // yellow/blue striped curbing
+    for (let i = -((cam * 0.9) % 32); i < W; i += 32) {
+      ctx.fillStyle = (Math.floor((i + cam * 0.9) / 16) % 2 === 0) ? '#ffe14a' : '#2a6cff';
+      ctx.fillRect(i, roadTop - 5, 16, 5);
+      ctx.fillRect(i, roadBot - 8, 16, 5);
+    }
+
+    // cones along lanes (original pixel)
+    for (let i = -2; i < Math.ceil(W / 90) + 2; i++) {
+      const cx = i * 90 - ((cam * 0.9) % 90) + 40;
+      drawCone(cx, laneY - 10);
+      drawCone(cx + 45, roadTop + 10);
     }
 
     const finX = TRACK_PX - cam;
     if (finX > -40 && finX < W + 40) {
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      for (let y = roadTop; y < roadBot; y += 16) {
-        ctx.fillRect(finX, y, 14, 8);
-        ctx.fillStyle = y % 32 < 16 ? '#111' : 'rgba(255,255,255,0.9)';
+      for (let y = roadTop; y < roadBot; y += 14) {
+        ctx.fillStyle = (Math.floor((y - roadTop) / 14) % 2 === 0) ? '#fff' : '#111';
+        ctx.fillRect(finX, y, 12, 14);
       }
-      ctx.fillStyle = '#7CFF3A';
-      ctx.font = 'bold 14px sans-serif';
-      ctx.fillText('FINISH', finX - 10, roadTop - 12);
+      ctx.fillStyle = '#ffe14a';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('FINISH', finX - 8, roadTop - 16);
     }
 
-    drawLights(120 - cam * 0.15, roadTop - 90);
+    drawLights(120 - cam * 0.15, roadTop - 100);
+  }
+
+  function drawCone(x, y) {
+    ctx.fillStyle = '#ff7a1a';
+    ctx.fillRect(x - 4, y - 10, 8, 10);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x - 3, y - 7, 6, 3);
+    ctx.fillStyle = '#ff7a1a';
+    ctx.fillRect(x - 5, y, 10, 3);
   }
 
   function drawCrowd(cam, roadTop) {
@@ -1152,6 +1166,7 @@
       reflectionPass: !!reflectionPass,
       time: performance.now(),
       showLabel: !reflectionPass,
+      mode: 'pixel',
     };
     if (window.SSRCarsDraw) {
       SSRCarsDraw.drawAt(ctx, car, screenX, y, scale, opts);
@@ -1490,12 +1505,15 @@
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-  // —— Garage (matches HTML tabs / canvas) ——
+  // —— Garage (pixel grid + class filter + dyno) ——
   const garageEl = $('garage');
   const menuCash = $('menu-cash');
   const garageCash = $('garage-cash');
   const garageCanvas = $('garage-canvas');
   const gctx = garageCanvas ? garageCanvas.getContext('2d') : null;
+  const dynoCanvas = $('dyno-canvas');
+  const dctx = dynoCanvas ? dynoCanvas.getContext('2d') : null;
+  let classFilter = 'ALL';
 
   function syncCashUI() {
     if (!progress && window.SSRCars) progress = SSRCars.load();
@@ -1510,28 +1528,31 @@
     return i < 0 ? 0 : i;
   }
 
-  function selectCarByDelta(d) {
-    if (!window.SSRCars) return;
-    const cars = SSRCars.CARS;
-    const next = (carIndex() + d + cars.length) % cars.length;
-    progress = SSRCars.selectCar(cars[next].id);
-    refreshActive();
-    renderGarage();
-  }
-
   function drawGaragePreview() {
     if (!gctx || !garageCanvas || !window.SSRCars) return;
     const w = garageCanvas.width, h = garageCanvas.height;
+    gctx.imageSmoothingEnabled = false;
     gctx.clearRect(0, 0, w, h);
-    const bg = gctx.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, '#1a2438');
-    bg.addColorStop(0.55, '#2a3348');
-    bg.addColorStop(0.55, '#1c222e');
-    bg.addColorStop(1, '#252b36');
-    gctx.fillStyle = bg;
-    gctx.fillRect(0, 0, w, h);
+    // garage bay
     gctx.fillStyle = '#2a2e34';
+    gctx.fillRect(0, 0, w, h);
+    gctx.fillStyle = '#3a3e44';
+    gctx.fillRect(0, 0, w, h * 0.55);
+    // wall details
+    gctx.fillStyle = '#4a4040';
+    gctx.fillRect(w * 0.82, h * 0.1, 8, h * 0.4);
+    gctx.fillStyle = '#ffe14a';
+    for (let i = 0; i < 5; i++) gctx.fillRect(w * 0.78, h * 0.12 + i * 14, 18, 3);
+    gctx.fillStyle = '#1a1c20';
     gctx.fillRect(0, h * 0.62, w, h * 0.38);
+    gctx.strokeStyle = '#2a2e34';
+    gctx.lineWidth = 2;
+    for (let i = 0; i < 8; i++) {
+      gctx.beginPath();
+      gctx.moveTo(0, h * 0.62 + i * 10);
+      gctx.lineTo(w, h * 0.72 + i * 12);
+      gctx.stroke();
+    }
 
     refreshActive();
     const a = active;
@@ -1545,7 +1566,7 @@
       nitro: 0,
       shiftFlash: 0,
       wheelRot: performance.now() / 400,
-      scaleX: 1,
+      scaleX: a.scaleX || 1,
       bodyLevel: a.bodyLevel || 0,
       rimIndex: a.rimIndex || 0,
       rimStyle: a.rimStyle || 'spoke5',
@@ -1553,19 +1574,110 @@
       trickyLaunch: a.trickyLaunch,
     };
     if (window.SSRCarsDraw) {
-      SSRCarsDraw.drawAt(gctx, car, w * 0.5, h * 0.72, 1.55 * (a.scaleX || 1), {
+      SSRCarsDraw.drawAt(gctx, car, w * 0.5, h * 0.78, 2.2, {
         quality: (settings && settings.preset) || 'High',
         reflectionPass: false,
         time: performance.now(),
         showLabel: false,
+        mode: 'pixel',
       });
     }
     if (a.trickyLaunch) {
-      gctx.save();
-      gctx.fillStyle = 'rgba(255,120,60,0.85)';
-      gctx.font = 'bold 10px sans-serif';
-      gctx.fillText('HELLCAT LAUNCH', w * 0.5 - 48, h * 0.72 - 78);
-      gctx.restore();
+      gctx.fillStyle = '#ff7a3a';
+      gctx.font = 'bold 11px sans-serif';
+      gctx.fillText('HELLCAT LAUNCH', w * 0.5 - 48, 18);
+    }
+  }
+
+  function drawDyno() {
+    if (!dctx || !dynoCanvas || !window.SSRCars || !progress) return;
+    const w = dynoCanvas.width, h = dynoCanvas.height;
+    const carId = progress.selected;
+    const dyno = SSRCars.dynoCurves(carId, progress);
+    dctx.imageSmoothingEnabled = false;
+    dctx.fillStyle = '#000';
+    dctx.fillRect(0, 0, w, h);
+    // grid
+    dctx.strokeStyle = '#1a1a1a';
+    dctx.lineWidth = 1;
+    for (let i = 0; i <= 6; i++) {
+      const x = 40 + ((w - 50) * i) / 6;
+      dctx.beginPath(); dctx.moveTo(x, 10); dctx.lineTo(x, h - 24); dctx.stroke();
+    }
+    for (let i = 0; i <= 4; i++) {
+      const y = 10 + ((h - 34) * i) / 4;
+      dctx.beginPath(); dctx.moveTo(40, y); dctx.lineTo(w - 10, y); dctx.stroke();
+    }
+    const maxHp = Math.max(100, ...dyno.points.map((p) => p.hp), dyno.peakHp);
+    const maxTq = Math.max(100, ...dyno.points.map((p) => p.tq), dyno.peakTq);
+    const maxY = Math.max(maxHp, maxTq) * 1.08;
+    const plotW = w - 50, plotH = h - 34;
+    function xy(p, val) {
+      const x = 40 + (p.rpm / dyno.redline) * plotW;
+      const y = 10 + plotH - (val / maxY) * plotH;
+      return [x, y];
+    }
+    // torque dashed blue
+    dctx.strokeStyle = '#4aa8ff';
+    dctx.lineWidth = 2;
+    dctx.setLineDash([6, 4]);
+    dctx.beginPath();
+    dyno.points.forEach((p, i) => {
+      const [x, y] = xy(p, p.tq);
+      if (i === 0) dctx.moveTo(x, y); else dctx.lineTo(x, y);
+    });
+    dctx.stroke();
+    dctx.setLineDash([]);
+    // power solid orange
+    dctx.strokeStyle = '#ff8a2a';
+    dctx.lineWidth = 3;
+    dctx.beginPath();
+    dyno.points.forEach((p, i) => {
+      const [x, y] = xy(p, p.hp);
+      if (i === 0) dctx.moveTo(x, y); else dctx.lineTo(x, y);
+    });
+    dctx.stroke();
+    // labels
+    dctx.fillStyle = '#888';
+    dctx.font = '10px sans-serif';
+    dctx.fillText('RPM', w / 2 - 10, h - 6);
+    dctx.fillText(String(Math.round(maxY)) + 'HP', 2, 18);
+    dctx.fillText('0', 28, h - 26);
+    dctx.fillText(String(dyno.redline), w - 40, h - 26);
+  }
+
+  function renderCarGrid() {
+    const grid = $('car-grid');
+    if (!grid || !window.SSRCars) return;
+    grid.innerHTML = '';
+    for (const car of SSRCars.CARS) {
+      const stats = SSRCars.appliedStats(car.id, progress);
+      const cr = SSRCars.classRating(stats);
+      if (classFilter !== 'ALL' && cr.letter !== classFilter) continue;
+      const tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = 'car-tile' + (progress.selected === car.id ? ' selected' : '');
+      tile.innerHTML = `<span class="class-tag"><span class="cls ${cr.letter}">${cr.letter}</span><span class="rtg">${cr.rating}</span></span>
+        <canvas width="120" height="48"></canvas>
+        <div class="tile-name">${car.short}</div>`;
+      const cv = tile.querySelector('canvas');
+      const tctx = cv.getContext('2d');
+      tctx.imageSmoothingEnabled = false;
+      tctx.fillStyle = '#0e1014';
+      tctx.fillRect(0, 0, 120, 48);
+      if (window.SSRCarsDraw) {
+        SSRCarsDraw.drawAt(tctx, {
+          id: car.id, color: stats.color, accent: stats.accent,
+          bodyLevel: stats.bodyLevel, rimStyle: stats.rimStyle, underglow: stats.underglow,
+          nitroActive: false, nitro: 0, wheelRot: 0, scaleX: 1,
+        }, 60, 40, 0.85, { mode: 'pixel', showLabel: false });
+      }
+      tile.addEventListener('click', () => {
+        progress = SSRCars.selectCar(car.id);
+        refreshActive();
+        renderGarage();
+      });
+      grid.appendChild(tile);
     }
   }
 
@@ -1577,19 +1689,24 @@
     const idx = carIndex();
     const car = cars[idx];
     const stats = SSRCars.appliedStats(car.id, progress);
+    const cr = SSRCars.classRating(stats);
     const nameEl = $('garage-car-name');
     const statsEl = $('garage-car-stats');
     if (nameEl) nameEl.textContent = car.name;
     if (statsEl) {
       statsEl.textContent = `${stats.engineName || 'Stock'} · ${stats.hp || '?'} hp / ${stats.tq || '?'} tq · feel ${stats.power.toFixed(2)}`;
     }
-    const dots = $('car-dots');
-    if (dots) {
-      dots.innerHTML = cars.map((_, i) => `<span class="${i === idx ? 'on' : ''}"></span>`).join('');
-    }
-    drawGaragePreview();
+    const tag = $('garage-class-tag');
+    if (tag) tag.innerHTML = `<span class="cls ${cr.letter}">${cr.letter}</span><span class="rtg">${cr.rating}</span>`;
 
-    // tabs panels
+    document.querySelectorAll('#class-filter .class-chip').forEach((b) => {
+      b.classList.toggle('active', b.dataset.class === classFilter);
+    });
+
+    renderCarGrid();
+    drawGaragePreview();
+    drawDyno();
+
     const panelEng = $('panel-eng');
     const panelPerf = $('panel-perf');
     const panelCos = $('panel-cos');
@@ -1732,7 +1849,6 @@
     glowRow.appendChild(glowBtn);
     panelCos.appendChild(glowRow);
 
-    // tab visibility
     panelEng.classList.toggle('hidden', garageTab !== 'eng');
     panelPerf.classList.toggle('hidden', garageTab !== 'perf');
     panelCos.classList.toggle('hidden', garageTab !== 'cos');
@@ -1747,8 +1863,12 @@
       renderGarage();
     });
   });
-  if ($('btn-car-prev')) $('btn-car-prev').addEventListener('click', () => selectCarByDelta(-1));
-  if ($('btn-car-next')) $('btn-car-next').addEventListener('click', () => selectCarByDelta(1));
+  document.querySelectorAll('#class-filter .class-chip').forEach((b) => {
+    b.addEventListener('click', () => {
+      classFilter = b.dataset.class;
+      renderGarage();
+    });
+  });
 
   if ($('btn-garage')) {
     $('btn-garage').addEventListener('click', () => {

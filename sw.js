@@ -1,9 +1,10 @@
-const CACHE = 'ssr-v2';
+const CACHE = 'ssr-pixel-v3';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/cars.js',
+  './js/cars-draw.js',
   './js/audio.js',
   './js/game.js',
   './manifest.json',

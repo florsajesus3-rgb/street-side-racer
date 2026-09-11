@@ -863,10 +863,182 @@
     }
   }
 
+
+  /* —— Original pixel-art draw mode (nearest-neighbor scaled silhouettes) —— */
+  const PIXEL_W = 96;
+  const PIXEL_H = 40;
+  const pixelCache = {};
+
+  function pxShade(hex, amt) {
+    return shadeColor(hex, amt);
+  }
+
+  function paintPixelBody(pctx, car) {
+    const id = car.id || 'charger';
+    const c = car.color || '#888';
+    const a = car.accent || '#ccc';
+    const dark = pxShade(c, -40);
+    const lit = pxShade(c, 28);
+    const glass = 'rgba(40,70,110,0.92)';
+    // clear
+    pctx.clearRect(0, 0, PIXEL_W, PIXEL_H);
+    // shadow
+    pctx.fillStyle = 'rgba(0,0,0,0.45)';
+    pctx.fillRect(8, 34, 80, 4);
+
+    // Distinct silhouettes per car (original, not traced)
+    function bodyRect(x, y, w, h, col) {
+      pctx.fillStyle = col;
+      pctx.fillRect(x, y, w, h);
+    }
+    function wheel(x, y) {
+      pctx.fillStyle = '#0a0a0a';
+      pctx.fillRect(x, y, 10, 10);
+      pctx.fillStyle = '#3a3a3a';
+      pctx.fillRect(x + 2, y + 2, 6, 6);
+      pctx.fillStyle = '#c8c8c8';
+      pctx.fillRect(x + 4, y + 4, 2, 2);
+    }
+
+    if (id === 'charger') {
+      // long hood, crosseyed stacked lights, muscular rear
+      bodyRect(10, 18, 72, 12, c);
+      bodyRect(28, 10, 36, 10, c);
+      bodyRect(10, 16, 22, 4, lit);
+      bodyRect(62, 14, 18, 6, dark);
+      pctx.fillStyle = glass;
+      pctx.fillRect(30, 11, 14, 7);
+      pctx.fillRect(46, 11, 12, 7);
+      // stacked headlights
+      bodyRect(8, 20, 3, 3, '#ffe8a0');
+      bodyRect(8, 24, 3, 3, '#ffe8a0');
+      bodyRect(80, 20, 3, 4, '#ff3030');
+      bodyRect(14, 28, 10, 3, dark);
+      bodyRect(64, 28, 12, 3, dark);
+    } else if (id === 'mustang') {
+      bodyRect(12, 18, 68, 12, c);
+      bodyRect(34, 10, 30, 10, c);
+      bodyRect(12, 16, 18, 4, lit);
+      pctx.fillStyle = glass;
+      pctx.fillRect(36, 11, 12, 7);
+      pctx.fillRect(50, 11, 10, 7);
+      bodyRect(10, 20, 4, 5, '#ffe8a0');
+      bodyRect(78, 20, 4, 5, '#ff3030');
+      // fastback slope cue
+      bodyRect(62, 12, 10, 6, dark);
+    } else if (id === 'supra') {
+      bodyRect(14, 18, 66, 11, c);
+      bodyRect(30, 9, 34, 11, c);
+      bodyRect(68, 12, 14, 8, dark); // wing
+      pctx.fillStyle = glass;
+      pctx.fillRect(32, 10, 14, 8);
+      pctx.fillRect(48, 10, 12, 8);
+      bodyRect(12, 20, 4, 4, '#ffe8a0');
+      bodyRect(78, 20, 4, 4, a);
+    } else if (id === 'camaro') {
+      bodyRect(12, 19, 70, 11, c);
+      bodyRect(32, 11, 34, 10, c);
+      bodyRect(18, 16, 20, 4, lit);
+      pctx.fillStyle = glass;
+      pctx.fillRect(34, 12, 14, 7);
+      pctx.fillRect(50, 12, 12, 7);
+      bodyRect(10, 21, 4, 4, '#ffe8a0');
+      bodyRect(80, 21, 4, 4, '#ff3030');
+      bodyRect(40, 17, 16, 2, dark); // SS stripe cue
+    } else if (id === 'challenger') {
+      bodyRect(10, 18, 74, 12, c);
+      bodyRect(30, 11, 34, 9, c);
+      bodyRect(10, 16, 24, 4, lit);
+      pctx.fillStyle = glass;
+      pctx.fillRect(32, 12, 14, 6);
+      pctx.fillRect(48, 12, 12, 6);
+      bodyRect(8, 21, 4, 5, '#ffe8a0');
+      bodyRect(82, 21, 4, 5, '#ff3030');
+    } else if (id === 'skyline') {
+      bodyRect(14, 18, 64, 11, c);
+      bodyRect(28, 9, 36, 11, c);
+      bodyRect(66, 8, 16, 5, dark); // GT-R wing
+      bodyRect(66, 13, 4, 6, dark);
+      pctx.fillStyle = glass;
+      pctx.fillRect(30, 10, 14, 8);
+      pctx.fillRect(46, 10, 12, 8);
+      bodyRect(12, 20, 4, 4, '#ffe8a0');
+      bodyRect(76, 20, 4, 4, '#ff3030');
+      bodyRect(40, 17, 4, 2, a);
+    } else {
+      bodyRect(14, 18, 66, 12, c);
+      bodyRect(30, 10, 34, 10, c);
+      pctx.fillStyle = glass;
+      pctx.fillRect(32, 11, 28, 7);
+      bodyRect(12, 20, 4, 4, '#ffe8a0');
+      bodyRect(78, 20, 4, 4, '#ff3030');
+    }
+
+    // body kit widen cue
+    if ((car.bodyLevel || 0) > 0) {
+      bodyRect(8, 24, 6, 6, dark);
+      bodyRect(82, 24, 6, 6, dark);
+    }
+    wheel(20, 26);
+    wheel(66, 26);
+
+    // nitro flame
+    if (car.nitroActive && car.nitro > 0) {
+      pctx.fillStyle = '#5ad0ff';
+      pctx.fillRect(2, 20, 8, 4);
+      pctx.fillStyle = '#e0f8ff';
+      pctx.fillRect(0, 21, 5, 2);
+    }
+  }
+
+  function getPixelSprite(car) {
+    const key = [
+      car.id, car.color, car.accent, car.bodyLevel || 0,
+      car.rimStyle || '', car.underglow || '',
+      (car.nitroActive && car.nitro > 0) ? 'n' : ''
+    ].join('|');
+    let entry = pixelCache[key];
+    if (entry) return entry;
+    const c = document.createElement('canvas');
+    c.width = PIXEL_W;
+    c.height = PIXEL_H;
+    paintPixelBody(c.getContext('2d'), car);
+    pixelCache[key] = c;
+    // limit cache
+    const keys = Object.keys(pixelCache);
+    if (keys.length > 80) delete pixelCache[keys[0]];
+    return c;
+  }
+
+  function drawPixelAt(ctx, car, screenX, y, scale, opts) {
+    opts = opts || {};
+    const spr = getPixelSprite(car);
+    const sx = scale * (car.scaleX || 1);
+    const w = PIXEL_W * sx * 2.1;
+    const h = PIXEL_H * scale * 2.1;
+    ctx.save();
+    const pitch = car.bodyPitch || 0;
+    const squatY = car.squatY || 0;
+    ctx.translate(screenX, y + squatY);
+    if (pitch) ctx.rotate(pitch);
+    ctx.imageSmoothingEnabled = false;
+    if (opts.reflectionPass) {
+      ctx.scale(1, -0.55);
+      ctx.globalAlpha = 0.25;
+    }
+    ctx.drawImage(spr, -w / 2, -h + 8, w, h);
+    ctx.restore();
+  }
+
+
   function drawAt(ctx, car, screenX, y, scale, opts) {
     opts = opts || {};
+    const mode = (opts.mode || opts.drawMode || 'pixel');
+    if (mode === 'pixel') {
+      drawPixelAt(ctx, car, screenX, y, scale, opts);
+      return;
+    }
     ctx.save();
-    // bodyPitch: + = nose-up wheelie; - = launch squat / shift dive
     const pitch = car.bodyPitch || 0;
     const squatY = car.squatY || 0;
     ctx.translate(screenX, y + squatY);
@@ -879,9 +1051,12 @@
   global.SSRCarsDraw = {
     drawCarBody: drawCarBody,
     drawAt: drawAt,
+    drawPixelAt: drawPixelAt,
     drawWheel: drawWheel,
     shadeColor: shadeColor,
     RIM_STYLES: RIM_STYLES,
     BODIES: Object.keys(BODIES),
+    PIXEL_W: PIXEL_W,
+    PIXEL_H: PIXEL_H,
   };
 })(window);
